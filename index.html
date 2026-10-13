@@ -1,32 +1,33 @@
 <!doctype html>
-<html lang="nb" data-version="1.0.0">
+<html lang="nb" data-version="2.0.0">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#e3000f">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#002f6c">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>TROX tidskonkurranse</title>
+  <title>Tidskonkurranse – TROX</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="app/styles/theme.css">
   <link rel="stylesheet" href="app/styles/app.css">
   <!-- Alle biblioteker ligger lokalt i /lib – ingen CDN -->
   <script src="lib/xlsx.full.min.js"></script>
-  <script src="lib/html5-qrcode.min.js"></script>
   <script type="module" src="app/main.js"></script>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <img class="logo" id="logo" src="assets/logo.svg" alt="TROX" draggable="false">
-      <div>
-        <div class="title">Tidskonkurranse</div>
-        <div class="subtitle">VVS-dagene 2026 · Stand D02-05</div>
+      <img class="logo" src="assets/logo.png" alt="TROX" draggable="false">
+      <div class="brand-tekst">
+        <span class="title" id="title">Tidskonkurranse</span>
+        <span class="subtitle" id="subtitle">TROX Auranor</span>
       </div>
       <span class="spacer"></span>
       <div class="statusbar" id="status">
         <span id="st-store"></span><span id="st-backup"></span><span id="st-wake"></span>
       </div>
+      <button class="btn secondary small" id="btn-switch" hidden>Bytt konkurranse</button>
+      <button class="btn secondary small" id="btn-admin" hidden>Admin</button>
     </header>
     <main class="screen-host" id="screen-host">
       <section class="screen center"><p class="lead muted">Starter …</p></section>

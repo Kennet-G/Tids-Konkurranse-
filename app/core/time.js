@@ -68,9 +68,17 @@ export function formatDateTime(iso) {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-// Filnavn for backup: TROX_VVS2026_2026-10-21_1430.xlsx (lokal tid)
-export function backupFilename(date = new Date(), { withSeconds = false, suffix = '' } = {}) {
+// Konkurransenavn -> trygg del av filnavn: «VVS-dagene 2026 – Stand D02» -> «VVS-dagene-2026-Stand-D02»
+export function slugify(name) {
+  const map = { æ: 'ae', ø: 'o', å: 'a', Æ: 'AE', Ø: 'O', Å: 'A' };
+  const s = String(name ?? '').replace(/[æøåÆØÅ]/g, (c) => map[c]).normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  return s || 'Konkurranse';
+}
+
+// Filnavn for backup: TROX_VVS-dagene-2026_2026-10-21_1430.xlsx (lokal tid)
+export function backupFilename(name, date = new Date(), { withSeconds = false } = {}) {
   const p = (n) => String(n).padStart(2, '0');
   const stamp = `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}_${p(date.getHours())}${p(date.getMinutes())}${withSeconds ? p(date.getSeconds()) : ''}`;
-  return `TROX_VVS2026_${stamp}${suffix}.xlsx`;
+  return `TROX_${slugify(name)}_${stamp}.xlsx`;
 }

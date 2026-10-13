@@ -35,6 +35,9 @@ export function eventLog(start = Date.parse('2026-10-21T08:00:00Z')) {
       this.add('ATTEMPT_RECORDED', { attemptId, participantId: id, cs, method: 'timer', ...extra });
       return attemptId;
     },
+    competition(name = 'Test', extra = {}) {
+      return this.add('COMPETITION_CREATED', { competitionId: 'konk-1', name, winnerMode: 'best', timerEnabled: true, ...extra });
+    },
     invalidate(attemptId, reason = 'test') {
       return this.add('ATTEMPT_VALIDITY_CHANGED', { attemptId, valid: false, reason });
     },

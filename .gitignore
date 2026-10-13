@@ -1,3 +1,5 @@
 node_modules/
 *.log
 .DS_Store
+# Backupfiler inneholder personopplysninger – skal aldri i git
+*.xlsx

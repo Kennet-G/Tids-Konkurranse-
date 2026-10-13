@@ -7,7 +7,7 @@ function toHex(buf) {
 }
 
 export function isValidPinFormat(pin) {
-  return /^\d{4,8}$/.test(String(pin ?? ''));
+  return /^\d{4}$/.test(String(pin ?? ''));
 }
 
 async function derive(pin, saltHex, iterations) {
@@ -19,7 +19,7 @@ async function derive(pin, saltHex, iterations) {
 }
 
 export async function hashPin(pin) {
-  if (!isValidPinFormat(pin)) throw new Error('PIN må være 4–8 sifre');
+  if (!isValidPinFormat(pin)) throw new Error('PIN må være 4 sifre');
   const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
   return { salt, iterations: ITERATIONS, hash: await derive(pin, salt, ITERATIONS) };
 }

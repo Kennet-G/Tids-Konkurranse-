@@ -16,7 +16,7 @@ export function compareRegistration(a, b) {
   return (a.registeredSeq ?? 0) - (b.registeredSeq ?? 0);
 }
 
-// Beste gyldige tid per deltaker. Deltakere uten gyldige forsøk er ikke med.
+// Beste gyldige tid per deltaker (slettede og ugyldige forsøk teller ikke). Deltakere uten gyldig tid er ikke med.
 export function bestTimes(state) {
   const out = [];
   for (const p of state.participants.values()) {
@@ -25,11 +25,11 @@ export function bestTimes(state) {
     let validCount = 0;
     for (const id of ids) {
       const a = state.attempts.get(id);
-      if (!a || !a.valid || !Number.isFinite(a.cs)) continue;
+      if (!a || a.deleted || !a.valid || !Number.isFinite(a.cs)) continue;
       validCount += 1;
       if (!best || a.cs < best.cs || (a.cs === best.cs && a.recordedSeq < best.recordedSeq)) best = a;
     }
-    if (best) out.push({ participant: p, bestCs: best.cs, bestAttemptId: best.id, validCount, attemptCount: ids.length });
+    if (best) out.push({ participant: p, bestCs: best.cs, bestAttemptId: best.id, validCount });
   }
   return out;
 }
@@ -38,7 +38,9 @@ export function computeStats(state) {
   const bests = bestTimes(state);
   let attemptCount = 0;
   let validAttemptCount = 0;
+  let deletedAttemptCount = 0;
   for (const a of state.attempts.values()) {
+    if (a.deleted) { deletedAttemptCount += 1; continue; }
     attemptCount += 1;
     if (a.valid) validAttemptCount += 1;
   }
@@ -49,6 +51,7 @@ export function computeStats(state) {
     attemptCount,
     validAttemptCount,
     invalidAttemptCount: attemptCount - validAttemptCount,
+    deletedAttemptCount,
     bestCs: bestOverall,
     medianCs: median(bests.map((b) => b.bestCs)),
   };

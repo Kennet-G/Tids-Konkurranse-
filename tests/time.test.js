@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { msToCs, elapsedCs, formatCs, formatCsPrecise, parseTimeToCs, backupFilename } from '../app/core/time.js';
+import { msToCs, elapsedCs, formatCs, formatCsPrecise, parseTimeToCs, backupFilename, slugify } from '../app/core/time.js';
 
 test('ms til hundredeler avkortes nedover', () => {
   assert.equal(msToCs(0), 0);
@@ -51,6 +51,14 @@ test('format → tolk gir samme verdi', () => {
 
 test('backup-filnavn med tidsstempel', () => {
   const d = new Date(2026, 9, 21, 14, 30, 7);
-  assert.equal(backupFilename(d), 'TROX_VVS2026_2026-10-21_1430.xlsx');
-  assert.equal(backupFilename(d, { withSeconds: true }), 'TROX_VVS2026_2026-10-21_143007.xlsx');
+  assert.equal(backupFilename('VVS2026', d), 'TROX_VVS2026_2026-10-21_1430.xlsx');
+  assert.equal(backupFilename('VVS2026', d, { withSeconds: true }), 'TROX_VVS2026_2026-10-21_143007.xlsx');
+  assert.equal(backupFilename('Rørdagene på Ås / 2026', d), 'TROX_Rordagene-pa-As-2026_2026-10-21_1430.xlsx');
+});
+
+test('konkurransenavn gjøres trygt for filnavn', () => {
+  assert.equal(slugify('VVS-dagene 2026 – Stand D02'), 'VVS-dagene-2026-Stand-D02');
+  assert.equal(slugify('Ærlig Ødegård Å'), 'AErlig-Odegard-A');
+  assert.equal(slugify('../../etc'), 'etc');
+  assert.equal(slugify('   '), 'Konkurranse');
 });

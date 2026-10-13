@@ -34,7 +34,7 @@ export function modal({ title, html = '', buttons = [{ label: 'OK', value: true,
     overlay.className = 'overlay';
     overlay.innerHTML = `<div class="modal ${kind}" role="dialog" aria-modal="true">
       ${title ? `<h2>${esc(title)}</h2>` : ''}<div class="modal-content">${html}</div>
-      <div class="btn-row">${buttons.map((b, i) => `<button class="btn ${b.cls ?? 'secondary'}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+      <div class="btn-row">${buttons.map((b, i) => `<button class="btn ${b.cls ?? ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
     const close = (value) => { overlay.remove(); resolve(value); };
     overlay.querySelectorAll('.btn-row button').forEach((btn) => {
       btn.addEventListener('click', async () => {

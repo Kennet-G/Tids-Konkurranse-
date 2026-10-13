@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { hashPin, verifyPin, isValidPinFormat } from '../app/core/pin.js';
 
-test('PIN-format 4–8 sifre', () => {
+test('PIN er nøyaktig 4 sifre', () => {
   assert.ok(isValidPinFormat('1234'));
-  assert.ok(isValidPinFormat('12345678'));
+  assert.ok(isValidPinFormat('0000'));
+  assert.equal(isValidPinFormat('12345'), false);
   assert.equal(isValidPinFormat('123'), false);
   assert.equal(isValidPinFormat('12a4'), false);
 });

@@ -1,7 +1,6 @@
 // IndexedDB-lag. Hendelser legges kun til (append-only); det finnes ingen slette- eller oppdateringsfunksjon
 // for hendelseslageret. Et løfte løses først når transaksjonen er fullført («complete») på disk.
 
-export const DB_NAME = 'trox-vvs2026';
 export const DB_VERSION = 1;
 
 function req(r) {
@@ -20,7 +19,7 @@ function txDone(tx) {
 }
 
 export class EventStore {
-  constructor(idb, name = DB_NAME) {
+  constructor(idb, name) {
     this.idb = idb ?? globalThis.indexedDB;
     this.name = name;
     this.db = null;
@@ -120,4 +119,14 @@ export class EventStore {
   close() {
     this.db?.close();
   }
+}
+
+// Sletter en hel database (brukes bare når en konkurranse slettes fra sitt eget adminpanel).
+export function deleteDatabase(idb, name) {
+  return new Promise((resolve, reject) => {
+    const r = (idb ?? globalThis.indexedDB).deleteDatabase(name);
+    r.onsuccess = () => resolve();
+    r.onerror = () => reject(r.error);
+    r.onblocked = () => resolve(); // fullføres når siste tilkobling lukkes
+  });
 }

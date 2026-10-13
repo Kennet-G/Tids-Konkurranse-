@@ -4,21 +4,24 @@ import { IDBFactory } from 'fake-indexeddb';
 import { buildState } from '../app/core/events.js';
 import { determineWinner, computeStats } from '../app/core/stats.js';
 import { EventStore } from '../app/core/db.js';
-import { buildWorkbook, workbookToArray, readEventsFromWorkbook, eventsToImport, SHEETS } from '../app/core/excel.js';
+import { buildWorkbook, workbookToArray, readEventsFromWorkbook, eventsToImport, competitionInfo, SHEETS } from '../app/core/excel.js';
 import { XLSX, eventLog } from './helpers.js';
 
 function sampleLog() {
   const log = eventLog();
-  log.add('SCAN', { participantId: '000123', known: false, method: 'qr' });
-  log.register('000123', 'Ola', 'Nordmann', { email: 'ola@firma.no', phone: '+47 912 34 567' });
-  log.register('=1+1', 'Formel', 'Test', { company: '=HYPERLINK("x")', email: 'f@x.no' });
-  log.register('ÆØÅ-id 7', 'Åse', 'Ødegård', { email: 'ase@x.no' });
-  const a = log.time('000123', 1234);
-  log.time('000123', 1199);
-  log.time('=1+1', 1500);
-  log.time('ÆØÅ-id 7', 1300, { method: 'manual' });
+  log.competition('VVS-dagene 2026');
+  log.register('p1', 'Ola', 'Nordmann', { email: 'ola@firma.no', phone: '0047 912 34 567' });
+  log.register('p2', 'Formel', 'Test', { company: '=HYPERLINK("x")', email: 'f@x.no' });
+  log.register('p3', 'Åse', 'Ødegård', { email: 'ase@x.no' });
+  const a = log.time('p1', 1234);
+  const b = log.time('p1', 1199);
+  log.time('p2', 1500);
+  log.time('p3', 1300, { method: 'manual' });
   log.invalidate(a, 'tjuvstart');
-  log.add('PARTICIPANT_UPDATED', { participantId: '000123', changes: { phone: '' }, previous: { phone: '+47 912 34 567' } });
+  log.add('ATTEMPT_EDITED', { attemptId: b, participantId: 'p1', cs: 1190, previousCs: 1199, reason: 'tastefeil' });
+  const c = log.time('p3', 1000, { method: 'admin' });
+  log.add('ATTEMPT_DELETED', { attemptId: c, participantId: 'p3', cs: 1000, reason: 'feil person' });
+  log.add('PARTICIPANT_UPDATED', { participantId: 'p1', changes: { company: 'Rør AS' }, previous: { company: 'Firma AS' } });
   log.add('SETTINGS_CHANGED', { winnerMode: 'median' });
   log.add('WINNER_DECLARED', determineWinner(buildState(log.events), 'median'));
   return log;
@@ -36,11 +39,16 @@ test('eksport har fanene Deltakere, Forsøk, Hendelseslogg og Resultat', () => {
   const deltakere = XLSX.utils.sheet_to_json(wb.Sheets.Deltakere, { raw: true });
   assert.equal(deltakere.length, 3);
   const ola = deltakere.find((r) => r.Fornavn === 'Ola');
-  assert.equal(ola['Deltaker-ID'], '000123', 'ID lagres som tekst, ledende nuller beholdes');
-  assert.equal(ola['Beste tid'], '11,99');
+  assert.equal(ola.Telefon, '0047 912 34 567', 'telefon lagres som tekst');
+  assert.equal(ola.Nr, 1);
+  assert.equal(ola['Beste tid'], '11,90', 'endret tid brukes');
   const forsok = XLSX.utils.sheet_to_json(wb.Sheets['Forsøk'], { raw: true });
-  assert.equal(forsok.length, 4);
-  assert.equal(forsok.filter((r) => r.Gyldig === 'NEI').length, 1);
+  assert.equal(forsok.length, 5, 'slettet forsøk tas med, merket');
+  assert.equal(forsok.filter((r) => r.Status === 'UGYLDIG').length, 1);
+  assert.equal(forsok.filter((r) => r.Status === 'SLETTET').length, 1);
+  assert.match(forsok.find((r) => r['Tid (hundredeler)'] === 1190).Endringer, /11,99 → 11,90/);
+  const res = XLSX.utils.sheet_to_json(wb.Sheets.Resultat, { header: 1, raw: true });
+  assert.equal(res[0][1], 'VVS-dagene 2026');
 });
 
 test('formel-lignende tekst lagres som tekst, ikke formel', () => {
@@ -73,13 +81,14 @@ test('gjenoppretting gir identisk tilstand, statistikk og vinner', () => {
   assert.deepEqual(determineWinner(b, 'median'), determineWinner(a, 'median'));
   assert.equal(b.result.winnerId, a.result.winnerId);
   assert.equal(b.settings.winnerMode, 'median');
-  assert.equal(b.participants.get('000123').phone, '');
+  assert.equal(b.participants.get('p1').company, 'Rør AS');
+  assert.equal(b.attempts.size, a.attempts.size);
 });
 
 test('gjenoppretting til ny enhet via IndexedDB, og ny import av samme fil gir ingen duplikater', async () => {
   const log = sampleLog();
   const { events } = roundTrip(log.events);
-  const store = await new EventStore(new IDBFactory(), 'restore-test').open();
+  const store = await new EventStore(new IDBFactory(), 'trox-konk-restore').open();
   const first = eventsToImport(await store.allIds(), events);
   assert.equal(first.fresh.length, events.length);
   await store.append(first.fresh);
@@ -89,6 +98,15 @@ test('gjenoppretting til ny enhet via IndexedDB, og ny import av samme fil gir i
   const restored = buildState(await store.all());
   assert.deepEqual(computeStats(restored), computeStats(buildState(log.events)));
   store.close();
+});
+
+test('konkurransens id og navn leses fra hendelsesloggen', () => {
+  const log = sampleLog();
+  const { events } = roundTrip(log.events);
+  assert.deepEqual(competitionInfo(events), { id: 'konk-1', name: 'VVS-dagene 2026', createdAt: log.events[0].ts });
+  log.add('SETTINGS_CHANGED', { name: 'Nytt navn' });
+  assert.equal(competitionInfo(log.events).name, 'Nytt navn');
+  assert.equal(competitionInfo([]), null);
 });
 
 test('sammenslåing: nye hendelser fra en annen fil legges til', () => {

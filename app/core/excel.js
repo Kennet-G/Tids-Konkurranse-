@@ -12,7 +12,7 @@ export const SHEETS = Object.freeze({
 });
 
 const LOG_HEADERS = ['Nr', 'Tidspunkt', 'Tidspunkt (ISO)', 'Type', 'Beskrivelse', 'Deltaker-ID', 'Enhet', 'Hendelses-ID', 'Data (JSON)'];
-const METHOD_LABEL = { timer: 'Stoppeklokke', manual: 'Manuell', admin: 'Admin (manuell)' };
+const METHOD_LABEL = { timer: 'Stoppeklokke i appen', manual: 'Ekstern stoppeklokke', admin: 'Lagt inn av admin' };
 const MODE_LABEL = { best: 'Beste tid', median: 'Nærmest median' };
 
 function sheetFromRows(XLSX, headers, rows, widths) {
@@ -28,42 +28,44 @@ const txt = (v) => (v == null ? '' : String(v));
 export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = '' } = {}) {
   const state = buildState(events);
   const wb = XLSX.utils.book_new();
-  wb.Props = { Title: 'TROX VVS-dagene 2026 – tidskonkurranse', Author: 'TROX Auranor', CreatedDate: exportedAt };
+  wb.Props = { Title: `TROX tidskonkurranse – ${state.settings.name}`, Author: 'TROX Auranor', CreatedDate: exportedAt };
 
   // Deltakere
   const bestById = new Map(bestTimes(state).map((b) => [b.participant.id, b]));
   const pRows = [...state.participants.values()]
-    .sort((a, b) => Date.parse(a.registeredAt) - Date.parse(b.registeredAt))
+    .sort((a, b) => a.nr - b.nr)
     .map((p) => {
-      const atts = attemptsFor(state, p.id);
+      const atts = attemptsFor(state, p.id).filter((a) => !a.deleted);
       const best = bestById.get(p.id);
       return [
-        txt(p.id), txt(p.firstName), txt(p.lastName), txt(p.company), txt(p.email), txt(p.phone),
+        p.nr, txt(p.firstName), txt(p.lastName), txt(p.company), txt(p.email), txt(p.phone),
         p.consent ? 'Ja' : 'Nei', formatDateTime(p.registeredAt), p.updatedAt ? formatDateTime(p.updatedAt) : '',
-        atts.length, atts.filter((a) => a.valid).length,
-        best ? formatCs(best.bestCs) : '', best ? best.bestCs : '', txt((p.duplicateOf ?? []).join(', ')),
+        atts.length, best ? formatCs(best.bestCs) : '', best ? best.bestCs : '', p.blockedAttempts || '', txt(p.id),
       ];
     });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX,
-    ['Deltaker-ID', 'Fornavn', 'Etternavn', 'Firma', 'E-post', 'Telefon', 'Samtykke', 'Registrert', 'Sist endret',
-      'Antall forsøk', 'Gyldige forsøk', 'Beste tid', 'Beste tid (hundredeler)', 'Mulig dobbeltregistrering av'],
-    pRows, [22, 16, 18, 24, 30, 16, 10, 20, 20, 12, 12, 12, 14, 24]), SHEETS.PARTICIPANTS);
+    ['Nr', 'Fornavn', 'Etternavn', 'Firma', 'E-post', 'Telefon', 'Samtykke', 'Registrert', 'Sist endret',
+      'Antall forsøk', 'Beste tid', 'Beste tid (hundredeler)', 'Avviste nye registreringer', 'Deltaker-ID'],
+    pRows, [6, 16, 18, 24, 30, 16, 10, 20, 20, 12, 12, 14, 14, 38]), SHEETS.PARTICIPANTS);
 
-  // Forsøk
+  // Forsøk (slettede tas med og merkes – de finnes også i hendelsesloggen)
   const aRows = [...state.attempts.values()]
     .sort((a, b) => a.recordedSeq - b.recordedSeq)
     .map((a) => {
       const p = state.participants.get(a.participantId);
+      const status = a.deleted ? 'SLETTET' : a.valid ? 'Gyldig' : 'UGYLDIG';
+      const reason = a.deleted ? a.deleteReason : a.validityReason;
       return [
-        txt(a.id), txt(a.participantId), txt(fullName(p)), txt(p?.company), formatCs(a.cs), a.cs,
-        METHOD_LABEL[a.method] ?? a.method, a.valid ? 'Ja' : 'NEI', txt(a.validityReason), formatDateTime(a.recordedAt),
-        a.startedAt ? formatDateTime(a.startedAt) : '', a.stoppedAt ? formatDateTime(a.stoppedAt) : '', txt(a.note),
+        p?.nr ?? '', txt(fullName(p)), txt(p?.company), formatCs(a.cs), a.cs, METHOD_LABEL[a.method] ?? a.method, status, txt(reason),
+        a.edits.length ? txt(a.edits.map((e) => `${formatCs(e.from)} → ${formatCs(e.to)}${e.reason ? ` (${e.reason})` : ''}`).join('; ')) : '',
+        formatDateTime(a.recordedAt), a.startedAt ? formatDateTime(a.startedAt) : '', a.stoppedAt ? formatDateTime(a.stoppedAt) : '', txt(a.note),
+        txt(a.id), txt(a.participantId),
       ];
     });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX,
-    ['Forsøk-ID', 'Deltaker-ID', 'Navn', 'Firma', 'Tid', 'Tid (hundredeler)', 'Metode', 'Gyldig', 'Årsak (gyldighet)',
-      'Registrert', 'Start', 'Stopp', 'Merknad'],
-    aRows, [38, 22, 24, 22, 12, 14, 16, 8, 26, 20, 20, 20, 24]), SHEETS.ATTEMPTS);
+    ['Nr', 'Navn', 'Firma', 'Tid', 'Tid (hundredeler)', 'Metode', 'Status', 'Årsak', 'Endringer',
+      'Registrert', 'Start', 'Stopp', 'Merknad', 'Forsøk-ID', 'Deltaker-ID'],
+    aRows, [6, 24, 22, 12, 14, 18, 10, 26, 30, 20, 20, 20, 24, 38, 38]), SHEETS.ATTEMPTS);
 
   // Hendelseslogg – brukes også til gjenoppretting
   const lRows = events.map((ev, i) => [
@@ -78,7 +80,7 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
   const r = rank(state, mode);
   const live = determineWinner(state, mode);
   const res = [
-    ['TROX Auranor – VVS-dagene 2026, stand D02-05', ''],
+    ['TROX Auranor – tidskonkurranse', txt(state.settings.name)],
     ['Eksportert', formatDateTime(exportedAt.toISOString())],
     ['Enhet', txt(device)],
     ['', ''],
@@ -87,9 +89,11 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
     ['Antall forsøk', stats.attemptCount],
     ['Gyldige forsøk', stats.validAttemptCount],
     ['Ugyldige forsøk', stats.invalidAttemptCount],
+    ['Slettede tider', stats.deletedAttemptCount],
     ['Beste tid', stats.bestCs == null ? '' : formatCs(stats.bestCs)],
     ['Median av gyldige beste-tider', stats.medianCs == null ? '' : formatCsPrecise(stats.medianCs)],
     ['Valgt vinnermodus', MODE_LABEL[mode] ?? mode],
+    ['Tidtaking i appen', state.settings.timerEnabled ? 'På' : 'Av (ekstern stoppeklokke)'],
     ['', ''],
   ];
   if (state.result) {
@@ -100,7 +104,7 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
       ['Modus', MODE_LABEL[w.mode] ?? w.mode],
       ['Vinner', txt(w.winnerName)],
       ['Firma', txt(w.winnerCompany)],
-      ['Deltaker-ID', txt(w.winnerId)],
+      ['E-post', txt(w.winnerEmail)],
       ['Tid', formatCs(w.winnerCs)],
       ['Median ved kåring', w.medianCs == null ? '' : formatCsPrecise(w.medianCs)],
       ['Uavgjort', w.tie ? `Ja – avgjort på tidligste registrering (mot ${w.tiedWith.map((t) => t.name).join(', ')})` : 'Nei'],
@@ -109,9 +113,9 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
   } else if (live) {
     res.push(['Foreløpig leder (ikke kåret)', `${live.winnerName} – ${formatCs(live.winnerCs)}${live.tie ? ' (uavgjort)' : ''}`], ['', '']);
   }
-  res.push(['Plass', 'Navn', 'Firma', 'Deltaker-ID', 'Beste tid', mode === 'median' ? 'Avstand til median' : '', 'Uavgjort', 'Registrert']);
+  res.push(['Plass', 'Navn', 'Firma', 'Nr', 'Beste tid', mode === 'median' ? 'Avstand til median' : '', 'Uavgjort', 'Registrert']);
   for (const row of r.rows) {
-    res.push([row.rank, txt(fullName(row.participant)), txt(row.participant.company), txt(row.participant.id), formatCs(row.bestCs),
+    res.push([row.rank, txt(fullName(row.participant)), txt(row.participant.company), row.participant.nr, formatCs(row.bestCs),
       mode === 'median' ? formatCsPrecise(row.distance) : '', row.tied ? 'Ja' : '', formatDateTime(row.participant.registeredAt)]);
   }
   const ws = XLSX.utils.aoa_to_sheet(res);
@@ -173,4 +177,13 @@ export function eventsToImport(existingIds, incoming) {
     fresh.push(ev);
   }
   return { fresh, skipped };
+}
+
+// Konkurransens id og navn fra en hendelseslogg (fra COMPETITION_CREATED og senere navneendringer).
+export function competitionInfo(events) {
+  const created = events.find((e) => e.type === EventType.COMPETITION_CREATED);
+  if (!created) return null;
+  let name = created.data.name ?? '';
+  for (const e of events) if (e.type === EventType.SETTINGS_CHANGED && typeof e.data?.name === 'string' && e.data.name.trim()) name = e.data.name.trim();
+  return { id: created.data.competitionId, name, createdAt: created.ts };
 }

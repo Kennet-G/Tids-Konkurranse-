@@ -1,31 +1,28 @@
-// Appens datalag: IndexedDB-hendelseslogg + tilstand i minnet + øktdata (utkast/pågående forsøk).
+// Datalag for én konkurranse: egen IndexedDB-hendelseslogg + tilstand i minnet + øktdata (utkast/pågående forsøk).
 import { EventStore } from '../core/db.js';
+import { competitionDbName } from '../core/registry.js';
 import { applyEvent, buildState, makeEvent } from '../core/events.js';
 
 const SESSION_KEY = 'session';
-const LS_SESSION = 'trox-vvs2026-session';
 
 export class AppStore {
-  constructor() {
-    this.db = new EventStore();
+  constructor(competitionId, device) {
+    this.competitionId = competitionId;
+    this.lsKey = `trox-konk-session-${competitionId}`;
+    this.db = new EventStore(undefined, competitionDbName(competitionId));
+    this.device = device;
     this.state = null;
     this.listeners = new Set();
-    this.device = '';
     this.session = {};
   }
 
   async init() {
     await this.db.open();
     this.state = buildState(await this.db.all());
-    this.device = await this.db.kvGet('deviceId');
-    if (!this.device) {
-      this.device = `nettbrett-${Math.random().toString(36).slice(2, 6)}`;
-      await this.db.kvSet('deviceId', this.device);
-    }
     // Øktdata: bruk den nyeste av IndexedDB og localStorage (localStorage skrives synkront ved hver endring).
     const fromDb = (await this.db.kvGet(SESSION_KEY)) ?? {};
     let fromLs = {};
-    try { fromLs = JSON.parse(localStorage.getItem(LS_SESSION) || '{}'); } catch { /* ignorer */ }
+    try { fromLs = JSON.parse(localStorage.getItem(this.lsKey) || '{}'); } catch { /* ignorer */ }
     this.session = (fromLs.savedAt ?? 0) > (fromDb.savedAt ?? 0) ? fromLs : fromDb;
     return this;
   }
@@ -79,7 +76,8 @@ export class AppStore {
   // ---- Økt (skjermbilde, skjemautkast, pågående forsøk) – overlever omstart ----
   setSession(patch) {
     this.session = { ...this.session, ...patch, savedAt: Date.now() };
-    try { localStorage.setItem(LS_SESSION, JSON.stringify(this.session)); } catch { /* full/blokkert */ }
+    try { localStorage.setItem(this.lsKey, JSON.stringify(this.session)); } catch { /* full/blokkert */ }
+    if (this.closed) return Promise.resolve();
     const snapshot = this.session;
     this._sessPromise = this.db.kvSet(SESSION_KEY, snapshot).catch((e) => console.error('Kunne ikke lagre økt', e));
     return this._sessPromise;
@@ -87,6 +85,17 @@ export class AppStore {
 
   clearSession() {
     return this.setSession({ screen: 'home', participantId: null, draft: null, attempt: null, pending: null, justRegistered: false });
+  }
+
+  close() {
+    this.closed = true;
+    this.listeners.clear();
+    this.db.close();
+  }
+
+  // Fjerner øktdata i localStorage (ved sletting av konkurransen).
+  forgetLocal() {
+    try { localStorage.removeItem(this.lsKey); } catch { /* */ }
   }
 
   kvGet(key, fallback) { return this.db.kvGet(key, fallback); }

@@ -1,22 +1,31 @@
-/* TROX-profil – ALLE fargekoder er samlet her. Juster mot TROX sin profilmanual ved behov. */
+/* TROX-profil – samme som TROX Kalkulator og TROX Planlegger (farger fra trox.no).
+   ALLE fargekoder er samlet her. Ved motstrid gjelder TROX sin profilhåndbok. */
 :root {
-  --trox-red: #e3000f;          /* TROX-rød aksent */
-  --trox-red-dark: #b0000c;     /* trykket/hover */
-  --trox-red-tint: #fde8ea;     /* lys rød bakgrunn */
-  --text: #3c3c3b;              /* mørk grå tekst */
-  --text-muted: #6f6f6e;
+  --navy: #002f6c;              /* logo / overskrifter (marineblå) */
+  --navy-soft: #0b3f80;
+  --trox-blue: #25ace7;         /* TROX-blå aksent (aktiv fane, markeringer) */
+  --action: #0075bf;            /* handlingsblå: knapper med hvit tekst (WCAG AA) */
+  --action-dark: #005a93;       /* trykket/hover */
+  --action-pale: #eaf4fb;       /* lys blå flate */
+  --text: #14213a;              /* brødtekst */
+  --text-muted: #566175;        /* tekstgrå */
   --bg: #ffffff;                /* hvit bakgrunn */
-  --surface: #f4f4f4;           /* lys grå flate */
-  --border: #d6d6d6;
-  --ok: #1e8e3e;                /* grønn bekreftelse */
-  --ok-tint: #e6f4ea;
-  --error: #c5221f;             /* rød feil */
-  --error-tint: #fce8e6;
-  --warn: #b26a00;
-  --warn-tint: #fff4e0;
-  --start: #1e8e3e;             /* START-knapp */
-  --stop: #e3000f;              /* STOPP-knapp (TROX-rød) */
+  --canvas: #f4f6f8;            /* lys grå side */
+  --surface: #f7f9fb;           /* lys flate */
+  --border: #dde2e7;            /* linjer */
+  --border-strong: #c6ced6;
+  --ok: #1f7a45;                /* grønn bekreftelse */
+  --ok-tint: #e9f5ee;
+  --error: #a3322a;             /* rød feil / slett */
+  --error-strong: #c0271d;
+  --error-tint: #fdf3f2;
+  --warn: #a66b0a;
+  --warn-tint: #fff7e8;
+  --start: #1f7a45;             /* START-knapp */
+  --stop: #c0271d;              /* STOPP-knapp */
   --white: #ffffff;
-  --overlay: rgba(40, 40, 40, 0.55);
-  --font: "Helvetica Neue", Helvetica, Arial, "Roboto", "Segoe UI", sans-serif;
+  --overlay: rgba(0, 47, 108, 0.45);
+  --shadow: 0 12px 32px rgba(0, 47, 108, .10);
+  --shadow-small: 0 2px 10px rgba(0, 47, 108, .06);
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
 }

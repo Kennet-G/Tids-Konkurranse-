@@ -1,9 +1,18 @@
-// Excel-backup til Nedlastinger: hvert 10. minutt (hvis noe er endret) og etter hver 10. registrering.
+// Excel-backup til Nedlastinger: hver time (bare hvis noe er endret siden forrige backup),
+// etter hver 10. registrering, ved kåring, før sletting og når admin trykker eksport.
 import { buildWorkbook, workbookToArray } from '../core/excel.js';
 import { backupFilename } from '../core/time.js';
 import { EventType } from '../core/events.js';
 
-const INTERVAL_MS = 10 * 60 * 1000;
+export const INTERVAL_MS = 60 * 60 * 1000;
+
+// Skal det tas automatisk backup nå? (ren funksjon – testes)
+export function backupDue({ last, eventCount, registrations = 1, now = Date.now(), intervalMs = INTERVAL_MS }) {
+  const changed = eventCount > (last?.eventCount ?? 0);
+  if (!changed) return false;
+  if (!last) return registrations > 0; // første backup når første deltaker er registrert
+  return now - Date.parse(last.at) >= intervalMs;
+}
 
 export class BackupService {
   constructor(store, onStatus) {
@@ -12,23 +21,29 @@ export class BackupService {
     this.last = null; // { at, filename, eventCount }
     this.lastName = '';
     this.busy = false;
+    this.timer = null;
+    this.unsub = null;
   }
 
   async init() {
     this.last = await this.store.kvGet('lastBackup', null);
-    this.store.onChange((ev) => {
+    this.unsub = this.store.onChange((ev) => {
       if (ev?.type === EventType.PARTICIPANT_REGISTERED && this.store.state.registrationCount % 10 === 0) {
-        this.run('etter 10 registreringer');
+        this.run('etter 10 registreringer').catch(() => {});
       }
     });
-    setInterval(() => this.tick(), 30 * 1000);
+    this.timer = setInterval(() => this.tick(), 60 * 1000);
     this.onStatus?.(this.last);
   }
 
+  stop() {
+    clearInterval(this.timer);
+    this.unsub?.();
+  }
+
   tick() {
-    const changed = this.store.state.eventCount > (this.last?.eventCount ?? 0);
-    const due = !this.last || Date.now() - Date.parse(this.last.at) >= INTERVAL_MS;
-    if (changed && due) this.run('automatisk hvert 10. min');
+    // BACKUP_EXPORTED-hendelsen selv teller ikke som en endring (eventCount lagres etter at den er logget).
+    if (backupDue({ last: this.last, eventCount: this.store.state.eventCount, registrations: this.store.state.registrationCount })) this.run('automatisk hver time').catch(() => {});
   }
 
   // Lager og laster ned en komplett Excel-fil. Returnerer filnavnet.
@@ -37,8 +52,9 @@ export class BackupService {
     this.busy = true;
     try {
       const now = new Date();
-      let filename = backupFilename(now);
-      if (filename === this.lastName) filename = backupFilename(now, { withSeconds: true });
+      const name = this.store.state.settings.name;
+      let filename = backupFilename(name, now);
+      if (filename === this.lastName) filename = backupFilename(name, now, { withSeconds: true });
       // Hendelsen om eksporten logges først, slik at den også er med i filen.
       await this.store.record(EventType.BACKUP_EXPORTED, { filename, reason });
       const events = await this.store.allEvents();

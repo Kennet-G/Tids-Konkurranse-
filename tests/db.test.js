@@ -7,8 +7,8 @@ import { makeEvent } from '../app/core/events.js';
 test('hendelser lagres med stigende seq og overlever ny åpning', async () => {
   const idb = new IDBFactory();
   const s1 = await new EventStore(idb, 't1').open();
-  const e1 = await s1.append(makeEvent('SCAN', { participantId: 'A' }));
-  const [e2, e3] = await s1.append([makeEvent('SCAN', { participantId: 'B' }), makeEvent('SCAN', { participantId: 'C' })]);
+  const e1 = await s1.append(makeEvent('ATTEMPT_STARTED', { participantId: 'A' }));
+  const [e2, e3] = await s1.append([makeEvent('ATTEMPT_STARTED', { participantId: 'B' }), makeEvent('ATTEMPT_STARTED', { participantId: 'C' })]);
   assert.ok(e1.seq < e2.seq && e2.seq < e3.seq);
   s1.close();
   const s2 = await new EventStore(idb, 't1').open();
@@ -20,7 +20,7 @@ test('hendelser lagres med stigende seq og overlever ny åpning', async () => {
 
 test('samme hendelses-ID kan ikke lagres to ganger (transaksjonen feiler)', async () => {
   const s = await new EventStore(new IDBFactory(), 't2').open();
-  const ev = makeEvent('SCAN', { participantId: 'A' });
+  const ev = makeEvent('ATTEMPT_STARTED', { participantId: 'A' });
   await s.append(ev);
   await assert.rejects(() => s.append(ev));
   assert.equal(await s.count(), 1);
@@ -29,9 +29,9 @@ test('samme hendelses-ID kan ikke lagres to ganger (transaksjonen feiler)', asyn
 
 test('feil i én hendelse i en batch lagrer ingen av dem', async () => {
   const s = await new EventStore(new IDBFactory(), 't3').open();
-  const ev = makeEvent('SCAN', { participantId: 'A' });
+  const ev = makeEvent('ATTEMPT_STARTED', { participantId: 'A' });
   await s.append(ev);
-  await assert.rejects(() => s.append([makeEvent('SCAN', { participantId: 'B' }), ev]));
+  await assert.rejects(() => s.append([makeEvent('ATTEMPT_STARTED', { participantId: 'B' }), ev]));
   assert.equal(await s.count(), 1);
   s.close();
 });

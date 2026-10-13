@@ -1,8 +1,8 @@
 {
-  "name": "trox-vvs2026-tidskonkurranse",
-  "version": "1.0.0",
+  "name": "trox-tidskonkurranse",
+  "version": "2.0.0",
   "private": true,
-  "description": "Offline PWA for registrering og tidtaking – TROX Auranor, VVS-dagene 2026",
+  "description": "Offline PWA for registrering og tidtaking i TROX Auranor sine konkurranser",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/**/*.test.js\"",
@@ -10,7 +10,6 @@
   },
   "devDependencies": {
     "fake-indexeddb": "6.2.5",
-    "html5-qrcode": "2.3.8",
     "xlsx": "0.18.5"
   }
 }

@@ -52,6 +52,24 @@ test('vinnermodus beste tid: raskeste gyldige tid vinner', () => {
   assert.deepEqual(w.top5.map((r) => r.id), ['B', 'C', 'A']);
 });
 
+test('slettede tider teller ikke i statistikk eller vinner; endret tid brukes', () => {
+  const log = eventLog();
+  log.register('A', 'A'); const a = log.time('A', 900);
+  log.register('B', 'B'); const b = log.time('B', 1200);
+  log.register('C', 'C'); log.time('C', 1300);
+  log.add('ATTEMPT_DELETED', { attemptId: a, participantId: 'A', cs: 900, reason: 'feil' });
+  let s = buildState(log.events);
+  assert.equal(determineWinner(s, 'best').winnerId, 'B');
+  const st = computeStats(s);
+  assert.equal(st.attemptCount, 2);
+  assert.equal(st.deletedAttemptCount, 1);
+  assert.equal(st.participantsWithTime, 2);
+  log.add('ATTEMPT_EDITED', { attemptId: b, participantId: 'B', cs: 1400, previousCs: 1200, reason: 'tastefeil' });
+  s = buildState(log.events);
+  assert.equal(determineWinner(s, 'best').winnerId, 'C');
+  assert.equal(computeStats(s).bestCs, 1300);
+});
+
 test('beste tid: ugyldig forsøk kan ikke vinne', () => {
   const log = eventLog();
   log.register('A', 'A'); const a = log.time('A', 100); log.invalidate(a, 'tjuvstart');
