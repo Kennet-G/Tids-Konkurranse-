@@ -1,6 +1,6 @@
-# TROX Tidtaking
+# TROX Konkurranseregistrering
 
-**TROX Tidtaking** er en app for registrering og tidtaking i TROX Auranor sine konkurranser, for eksempel på stand under VVS-dagene.
+**TROX Konkurranseregistrering** er en app for registrering og tidtaking i TROX Auranor sine konkurranser, for eksempel på stand under VVS-dagene.
 Appen er en progressiv webapp (PWA) og virker på **Android-nettbrett og PC** (Chrome eller Edge).
 
 - Den virker **helt uten nett**.

@@ -1,5 +1,5 @@
 {
-  "name": "trox-tidtaking",
+  "name": "trox-konkurranseregistrering",
   "version": "2.1.0",
   "private": true,
   "description": "Offline PWA for registrering og tidtaking i TROX Auranor sine konkurranser",
