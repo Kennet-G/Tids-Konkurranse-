@@ -173,14 +173,17 @@ export class PublicUI {
         title: `Samme ${label[kind]} er allerede registrert`,
         html: `<p class="lead" style="font-size:20px">Det finnes allerede en deltaker med samme ${label[kind]}:</p>
           <ul style="font-size:19px">${rows.map(({ p, match }) => `<li><strong>${esc(fullName(p))}</strong>, ${esc(p.company)} (nr ${p.nr}) – samme ${label[match]}</li>`).join('')}</ul>
-          <p style="font-size:18px">Er dette en annen person, kan en fra standen godkjenne registreringen med admin-PIN.</p>`,
-        buttons: [{ label: 'Tilbake og rett', value: null, cls: 'secondary' }, { label: 'Overstyr med admin-PIN', value: 'override' }],
+          <p style="font-size:18px">Er dette en annen person, kan en fra standen godkjenne registreringen med admin-PIN.
+          «Avbryt» tømmer skjemaet.</p>`,
+        buttons: [{ label: 'Avbryt – ny registrering', value: null, cls: 'secondary' }, { label: 'Overstyr med admin-PIN', value: 'override' }],
       });
       if (choice !== 'override') {
         this.store.record(EventType.REREGISTRATION_BLOCKED, {
           participantId: rows[0].p.id, matchedOn: kind, attempted: `${contact.firstName} ${contact.lastName}, ${contact.email}${contact.phone ? `, ${contact.phone}` : ''}`,
         }).catch((e) => console.error(e));
-        return;
+        // Det som ble skrevet inn fjernes, og et tomt skjema åpnes for neste registrering.
+        await this.store.setSession({ draft: null });
+        return this.showRegister();
       }
       return this.overrideAndRegister(contact, shared, kind);
     }

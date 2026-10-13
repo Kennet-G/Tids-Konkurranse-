@@ -73,7 +73,7 @@ mellomrom og telefonformat spiller ingen rolle, så `+47 976 45 806` og `9764580
 |---|---|
 | **Helt lik person** (navn, firma, e-post og telefon), som **har hatt** forsøket | Appen viser *«Du har allerede hatt forsøket ditt»*. Knappen *Overstyr (admin-PIN)* kan gi et nytt forsøk. |
 | **Helt lik person** som **ikke har fått tid** ennå | Deltakeren sendes rett videre til forsøket. Det opprettes ingen ny registrering. |
-| **Samme e-post eller samme telefon** som en annen deltaker | Appen stopper og viser et varsel med hvem som har samme e-post eller telefon. Velg *Tilbake og rett* eller *Overstyr med admin-PIN*. |
+| **Samme e-post eller samme telefon** som en annen deltaker | Appen stopper og viser et varsel med hvem som har samme e-post eller telefon. Velg *Avbryt – ny registrering*, som tømmer skjemaet og åpner et tomt skjema, eller *Overstyr med admin-PIN*. |
 | Bare samme navn | Registreres som ny deltaker, fordi flere kan hete det samme. |
 
 **Overstyring** krever PIN-koden til konkurransen. Alt som skjer, logges:
