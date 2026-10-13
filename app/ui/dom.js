@@ -60,15 +60,6 @@ export function fatal(message) {
   document.body.appendChild(el);
 }
 
-// Kaller fn etter «langt trykk» (ms) på elementet.
-export function onLongPress(el, ms, fn) {
-  let t = null;
-  const cancel = () => { clearTimeout(t); t = null; };
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); cancel(); t = setTimeout(() => { t = null; fn(); }, ms); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => el.addEventListener(n, cancel));
-  el.addEventListener('contextmenu', (e) => e.preventDefault());
-}
-
 export function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };

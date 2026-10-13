@@ -16,8 +16,8 @@ const METHOD_LABEL = { timer: 'Appens stoppeklokke', manual: 'Ekstern stoppeklok
 const FIELD_LABEL = { firstName: 'Fornavn', lastName: 'Etternavn', company: 'Firma', email: 'E-post', phone: 'Telefon' };
 
 export class AdminUI {
-  constructor({ store, backup, registry, competitionId, onClose, onSwitch, onDeleted, onRenamed }) {
-    Object.assign(this, { store, backup, registry, competitionId, onClose, onSwitch, onDeleted, onRenamed });
+  constructor({ store, backup, registry, competitionId, onClose, onSwitch, onDeleted, onRenamed, kiosk }) {
+    Object.assign(this, { store, backup, registry, competitionId, onClose, onSwitch, onDeleted, onRenamed, kiosk });
     this.el = null;
     this.tab = 'participants';
     this.view = {
@@ -474,6 +474,13 @@ export class AdminUI {
           <label><input type="radio" name="timer" value="on" ${s.timerEnabled ? 'checked' : ''}> <span><strong>Stoppeklokke i appen</strong><br><span class="small muted">Deltakeren registrerer seg og trykker START / STOPP</span></span></label>
           <label><input type="radio" name="timer" value="off" ${!s.timerEnabled ? 'checked' : ''}> <span><strong>Ekstern stoppeklokke</strong><br><span class="small muted">Deltakeren registrerer seg, operatøren taster tiden</span></span></label>
         </div><p class="small muted">Kan endres når som helst, også midt i konkurransen. Endringen logges.</p></div>
+      <div class="panel"><h3>Kioskmodus på denne enheten</h3>
+        <div class="radio-row">
+          <label><input type="radio" name="kiosk" value="on" ${this.kiosk?.get() ? 'checked' : ''}> <span><strong>På</strong><br><span class="small muted">Fullskjerm, ingen Admin/Bytt-knapper, tilbake-knappen virker ikke</span></span></label>
+          <label><input type="radio" name="kiosk" value="off" ${!this.kiosk?.get() ? 'checked' : ''}> <span><strong>Av</strong><br><span class="small muted">Vanlig visning med Admin-knapp</span></span></label>
+        </div>
+        <p class="small muted">I kioskmodus åpnes admin ved å <strong>holde fingeren på TROX-logoen i 2 sekunder</strong> (nettbrett) eller med <strong>Ctrl+Alt+A</strong> (PC – du kan også holde museknappen på logoen).
+          For full låsing: bruk i tillegg «Fest app» på Android eller kioskmodus i Chrome/Edge på PC (se README).</p></div>
       <div class="panel"><h3>Konkurranse</h3>
         <div class="toolbar"><input type="text" id="c-name" value="${esc(s.name)}" style="flex:1 1 320px" maxlength="80"><button class="btn small" id="c-rename">Lagre navn</button></div>
         <div class="btn-row" style="justify-content:flex-start"><button class="btn secondary small" id="c-pin">Endre PIN …</button><button class="btn secondary small" id="c-switch">Bytt konkurranse …</button></div></div>
@@ -502,6 +509,12 @@ export class AdminUI {
       const on = i.value === 'on';
       await this.save(EventType.SETTINGS_CHANGED, { timerEnabled: on }, on ? 'Stoppeklokke i appen er slått PÅ' : 'Ekstern stoppeklokke – tidtaking i appen er AV');
       this.refresh();
+    }));
+    $$('input[name=kiosk]', body).forEach((i) => i.addEventListener('change', async () => {
+      const on = i.value === 'on';
+      await this.kiosk?.set(on);
+      this.store.record(EventType.SETTINGS_CHANGED, { kiosk: on }).catch(() => {});
+      toast(on ? '✓ Kioskmodus PÅ – hold på logoen i 2 sek for admin' : 'Kioskmodus AV', on ? 'ok' : 'info', 5000);
     }));
     $('#c-rename', body).addEventListener('click', () => this.rename($('#c-name', body).value));
     $('#c-pin', body).addEventListener('click', () => this.changePin());

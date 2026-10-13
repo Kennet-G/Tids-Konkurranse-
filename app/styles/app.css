@@ -9,6 +9,12 @@ input, select { caret-color: var(--action); accent-color: var(--action); }
 [hidden] { display: none !important; }
 :focus-visible { outline: 3px solid rgba(0, 117, 191, .35); outline-offset: 2px; }
 
+/* ---------- Kioskmodus ---------- */
+body.kiosk #btn-admin, body.kiosk #btn-switch { display: none !important; }
+body.kiosk { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body.kiosk input, body.kiosk textarea, body.kiosk .admin { user-select: text; -webkit-user-select: text; }
+body.kiosk .topbar .logo { touch-action: none; -webkit-user-drag: none; }
+
 /* ---------- Ramme ---------- */
 .app { display: flex; flex-direction: column; height: 100%; }
 .topbar { display: flex; align-items: center; gap: 18px; padding: 10px 28px; min-height: 72px; background: var(--bg); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(0, 47, 108, .03); flex: 0 0 auto; }

@@ -6,6 +6,7 @@ import { formatDateTime } from './core/time.js';
 import { AppStore } from './services/store.js';
 import { BackupService } from './services/backup.js';
 import { installWakeLock } from './services/wakelock.js';
+import { installKiosk, setKiosk, isKiosk } from './services/kiosk.js';
 import { PublicUI } from './ui/public.js';
 import { AdminUI } from './ui/admin.js';
 import { renderChooser } from './ui/chooser.js';
@@ -36,17 +37,24 @@ async function main() {
   $('#st-store').innerHTML = `<span class="dot ${persisted ? '' : 'warn'}"></span>${persisted ? 'Lagring OK' : 'Lagring ikke vedvarende'}`;
   installWakeLock((ok) => { $('#st-wake').innerHTML = `<span class="dot ${ok ? '' : 'warn'}"></span>${ok ? 'Skjerm våken' : 'Skjermlås ikke aktiv'}`; });
   ui.admin.addEventListener('click', () => current?.admin.show());
+  // Bytte konkurranse krever PIN-koden til den aktive konkurransen.
   ui.switch.addEventListener('click', async () => {
-    if (current?.store.session.attempt) return toast('Et forsøk pågår – avslutt det først', 'err');
-    const ok = await modal({ title: 'Bytte konkurranse?', html: '<p>Du går til listen over konkurranser på denne enheten. Ingen data slettes.</p>',
-      buttons: [{ label: 'Avbryt', value: false, cls: 'secondary' }, { label: 'Til konkurranselisten', value: true }] });
-    if (ok) showChooser();
+    if (!current) return;
+    if (current.store.session.attempt) return toast('Et forsøk pågår – avslutt det først', 'err');
+    if (await pinFor(current.id, 'Bytt konkurranse – tast admin-PIN')) showChooser();
   });
+  installKiosk({ logo: $('.topbar .logo'), onAdmin: () => current?.admin.show() });
+  setKiosk(await registry.kvGet('kiosk', false));
   window.addEventListener('unhandledrejection', (e) => console.error('Uhåndtert feil', e.reason));
 
   const active = await registry.getActive();
   if (active && (await registry.get(active))) await openCompetition(active);
   else await showChooser();
+}
+
+function pinFor(id, title) {
+  const store = current?.id === id ? current.store : null;
+  return requirePin(registry, id, title, { onFail: () => store?.record(EventType.ADMIN_LOGIN_FAILED, { context: title }).catch(() => {}) });
 }
 
 async function closeCurrent() {
@@ -65,7 +73,8 @@ async function showChooser() {
   await renderChooser(host, {
     registry,
     activeId: await registry.getActive(),
-    onOpen: (id) => openCompetition(id),
+    // Å åpne en konkurranse fra listen krever konkurransens egen PIN.
+    onOpen: async (id) => { const rec = await registry.get(id); if (await pinFor(id, `Åpne «${rec?.name ?? ''}» – tast PIN`)) openCompetition(id); },
     onCreate: (opts) => createCompetition(opts),
     onRestore: (r) => restoreCompetition(r),
   });
@@ -107,6 +116,10 @@ async function openCompetition(id) {
     onSwitch: () => showChooser(),
     onRenamed: (name) => setHeader(name, 'TROX Konkurranseregistrering', true),
     onDeleted: () => deleteCompetition(id),
+    kiosk: {
+      get: () => isKiosk(),
+      set: async (on) => { await registry.kvSet('kiosk', !!on); setKiosk(on); },
+    },
   });
   current = { id, store, backup, pub, admin };
   setHeader(store.state.settings.name || rec.name, 'TROX Konkurranseregistrering', true);

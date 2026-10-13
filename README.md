@@ -40,8 +40,9 @@ Enheten husker den aktive konkurransen og åpner den direkte neste gang appen st
 3. Vinnermodus.
 4. En **4-sifret PIN**, som du taster to ganger.
 
-**Bytt konkurranse:** Trykk knappen *Bytt konkurranse* øverst til høyre. Du kan også gå via adminpanelet.
-Ingen data slettes når du bytter.
+**Bytt konkurranse:** Trykk knappen *Bytt konkurranse* øverst til høyre, eller gå via adminpanelet.
+Dette krever **PIN-koden til konkurransen som er aktiv**. Å åpne en konkurranse fra listen krever **den
+konkurransens egen PIN**. Besøkende kan dermed ikke bytte konkurranse. Ingen data slettes når du bytter.
 
 Hver konkurranse har egen database, egen PIN, egen hendelseslogg og egne backupfiler.
 
@@ -206,6 +207,63 @@ Dataene påvirkes ikke.
 
 ---
 
+## Kioskmodus
+
+Kioskmodus låser enheten til appen, slik at besøkende ikke kommer ut av den. Den beste låsingen får du ved å
+kombinere appens egen kioskmodus med låsing i operativsystemet.
+
+### 1. Appens kioskmodus (nettbrett og PC)
+
+Slå den på under *Admin → Innstillinger og backup → Kioskmodus på denne enheten*. Innstillingen gjelder enheten,
+ikke konkurransen. Når den er på:
+
+- Appen går i fullskjerm, og går tilbake til fullskjerm ved neste trykk hvis noen går ut.
+- Knappene **Admin** og **Bytt konkurranse** skjules.
+- **Tilbake-knappen** på Android og «tilbake» i nettleseren virker ikke.
+- Menyen ved høyreklikk eller langt trykk er slått av, unntatt i skrivefelt.
+
+**Slik åpner du admin i kioskmodus:**
+
+- **Nettbrett:** hold fingeren på **TROX-logoen i 2 sekunder**.
+- **PC:** trykk **Ctrl+Alt+A**, eller hold museknappen nede på logoen i 2 sekunder.
+
+Begge krever PIN. Kioskmodus slås av samme sted i admin.
+
+### 2. Android-nettbrett: «Fest app» (app-festing)
+
+Denne låsingen er innebygd i Android og krever ingen ekstra app.
+
+1. *Innstillinger → Sikkerhet (og personvern) → Flere sikkerhetsinnstillinger → Fest app / App-festing* → **På**.
+2. Slå på **«Spør om PIN/mønster før løsning»**.
+3. Åpne TROX Konkurranseregistrering. Trykk *Nylige apper* (firkant eller sveip opp og hold), trykk på app-ikonet
+   øverst og velg **«Fest denne appen»**.
+4. Appen kan nå bare forlates ved å holde *Tilbake* og *Nylige apper* samtidig og deretter taste nettbrettets PIN.
+
+Navnene på menyene varierer litt mellom Samsung, Lenovo og andre merker. Søk etter **«fest»** i Innstillinger.
+
+Vil du ha en kioskløsning som starter automatisk etter omstart, kan en betalt kiosk-app brukes, for eksempel
+*Fully Kiosk Browser*. Da må appens adresse åpnes i kiosk-appen, og dataene ligger i kiosk-appen, ikke i Chrome.
+For de fleste holder «Fest app».
+
+### 3. PC (Windows): Chrome i kioskmodus
+
+Bruk filen `kiosk/Start-kiosk-Chrome.cmd`:
+
+1. Lukk **alle** Chrome-vinduer.
+2. Dobbeltklikk filen. Appen åpnes i fullskjerm uten adressefelt, faner eller menyer.
+3. Avslutt med **Alt+F4**.
+
+Chrome i kioskmodus bruker den vanlige Chrome-profilen din, så dataene er de samme som når appen åpnes ellers.
+Endre `ADRESSE` i filen hvis appen ligger på en annen adresse.
+
+> ⚠️ **Ikke bruk kioskmodusen i Microsoft Edge** (`msedge --kiosk`). Den kjører InPrivate og **sletter alle data
+> når den lukkes**.
+
+Til ren publikumsbruk på en PC kan Windows sin **«Tilordnet tilgang»** (Assigned Access) låse en egen
+brukerkonto til én app. Det krever Windows Pro og bør settes opp av IT.
+
+---
+
 ## Adminpanelet
 
 | Fane | Innhold |
@@ -220,6 +278,7 @@ Innholdet i fanen **Innstillinger og backup**:
 
 - **Tidtaking:** stoppeklokke i appen eller ekstern stoppeklokke. Kan byttes når som helst, også midt i konkurransen.
 - Navn på konkurransen.
+- **Kioskmodus på denne enheten** (se over).
 - **Endre PIN** og **Bytt konkurranse**.
 - Excel-eksport og import, som slår sammen data fra en annen enhet.
 - Status for lagring, Wake Lock og offline-modus.
@@ -327,6 +386,7 @@ app/styles/      theme.css (ALLE farger – TROX-profil) og app.css
 lib/             SheetJS 0.18.5 (lokalt, ingen CDN)
 assets/          logo.png (TROX-logo, samme som TROX Kalkulator), app-ikoner
 tests/           Automatiske tester + lokal server
+kiosk/           Start-kiosk-Chrome.cmd – starter appen i Chrome-kioskmodus på Windows
 ```
 
 | Testfil | Dekker |
@@ -356,7 +416,10 @@ tests/           Automatiske tester + lokal server
 - [ ] *Admin → Innstillinger og backup* viser grønt for: **Vedvarende lagring = Ja**, **Offline-klar = Ja**,
       **Skjerm holdes våken = Aktiv**.
 - [ ] Flymodus er på og appen startet på nytt: alt virker.
-- [ ] Batterioptimalisering er av, nettbrettet står på lader, og app-festing er på.
+- [ ] Batterioptimalisering er av, og nettbrettet står på lader.
+- [ ] Kioskmodus er på i admin. Test at admin åpnes ved å holde på logoen i 2 sekunder (eller Ctrl+Alt+A på PC).
+- [ ] «Fest app» er på (Android) med PIN for å løsne, eller PC-en er startet med `kiosk/Start-kiosk-Chrome.cmd`.
+- [ ] «Bytt konkurranse» ber om PIN.
 - [ ] Rotasjonen er låst (helst høykant), og autoutfylling i Chrome og ordforslag i tastaturet er slått av.
 - [ ] Fyll ut skjemaet med skjermtastaturet: alle felt og «Lagre» kan nås uten å lukke tastaturet.
 

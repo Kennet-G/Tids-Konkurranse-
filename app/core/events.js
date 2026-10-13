@@ -335,6 +335,7 @@ export function describeEvent(ev, formatCs = (cs) => String(cs)) {
       d.winnerMode ? `Vinnermodus: ${d.winnerMode === 'median' ? 'nærmest median' : 'beste tid'}` : '',
       typeof d.timerEnabled === 'boolean' ? `Tidtaking i appen: ${d.timerEnabled ? 'PÅ' : 'AV'}` : '',
       d.name ? `Navn: «${d.name}»` : '',
+      typeof d.kiosk === 'boolean' ? `Kioskmodus på enheten: ${d.kiosk ? 'PÅ' : 'AV'}` : '',
     ].filter(Boolean).join(', ');
     case EventType.WINNER_DECLARED: return `Vinner (${d.mode === 'median' ? 'nærmest median' : 'beste tid'}): ${d.winnerName} – ${formatCs(d.winnerCs)}${d.tie ? ' (UAVGJORT, avgjort på tidligste registrering)' : ''}`;
     case EventType.RESULT_UNLOCKED: return `Resultat låst opp${d.reason ? `: ${d.reason}` : ''}`;
