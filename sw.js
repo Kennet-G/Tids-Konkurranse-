@@ -1,6 +1,6 @@
 // Service worker: alt caches ved installasjon, slik at appen virker helt uten nett.
 // Øk VERSION ved hver endring av filene, så nettbrettet henter ny versjon neste gang det er på nett.
-const VERSION = 'trox-konk-v2.2.0';
+const VERSION = 'trox-konk-v2.3.0';
 const FILES = [
   './',
   './index.html',

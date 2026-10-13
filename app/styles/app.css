@@ -127,7 +127,7 @@ h2 { color: var(--navy); font-size: 30px; margin: 0 0 12px; }
 .modal h2 { margin-top: 0; }
 .modal .btn-row { justify-content: flex-end; margin-top: 22px; }
 .modal .field input, .modal select { font-size: 22px; }
-.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 16px 28px; border-radius: 10px; font-size: 20px; font-weight: 700; z-index: 80; box-shadow: var(--shadow); max-width: 90vw; }
+.toast { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); padding: 16px 28px; border-radius: 10px; font-size: 20px; font-weight: 700; z-index: 80; box-shadow: var(--shadow); max-width: 90vw; }
 .toast.ok { background: var(--ok); color: var(--white); }
 .toast.err { background: var(--error-strong); color: var(--white); }
 .toast.info { background: var(--navy); color: var(--white); }
@@ -190,13 +190,36 @@ table.grid td.actions .btn { margin-left: 6px; }
 .small { font-size: 13px; }
 .more { text-align: center; margin: 16px 0; }
 
-/* ---------- Mindre skjermer ---------- */
+/* ---------- Høykant (stående nettbrett) og smale skjermer ---------- */
+@media (orientation: portrait) and (max-width: 1100px), (max-width: 820px) {
+  .screen { padding: 22px 24px; gap: 28px; }
+  .home { flex-direction: column; justify-content: center; align-items: stretch; }
+  .home .info { flex: 0 0 auto; max-width: none; }
+  .home .cta { flex: 0 0 auto; width: 100%; }
+  .form-grid, .detail-grid { grid-template-columns: 1fr; }
+  .form-grid .field .err { min-height: 0; }
+  .statusbar { display: none; }
+}
 @media (max-width: 820px) {
   html, body { font-size: 17px; }
   .screen { padding: 18px 16px; gap: 20px; }
-  .home { flex-direction: column; justify-content: flex-start; }
-  .home .cta { flex: 0 0 auto; width: 100%; }
-  .form-grid, .detail-grid { grid-template-columns: 1fr; }
-  .statusbar { display: none; }
   h1 { font-size: 34px; }
+}
+
+/* ---------- Lav høyde: liggende nettbrett med skjermtastaturet oppe ---------- */
+@media (max-height: 560px) {
+  .topbar { min-height: 50px; padding: 4px 20px; }
+  .topbar .logo { height: 26px; }
+  .brand-tekst .title { font-size: 18px; }
+  .brand-tekst .subtitle, .statusbar { display: none; }
+  .topbar .btn.small { min-height: 38px; padding: 4px 12px; font-size: 15px; }
+  .screen { padding-top: 10px; padding-bottom: 10px; }
+  .form-head h2 { font-size: 24px; margin-bottom: 4px; }
+  .form-head .muted { display: none; }
+  .field label { font-size: 16px; }
+  .field input { min-height: 50px; font-size: 21px; padding: 6px 14px; }
+  .field .err { min-height: 16px; font-size: 13px; }
+  .consent { font-size: 13px; padding: 8px 12px; }
+  .time-input { font-size: 54px !important; min-height: 84px !important; }
+  .toast { top: 58px; }
 }

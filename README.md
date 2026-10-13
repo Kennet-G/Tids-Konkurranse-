@@ -152,6 +152,36 @@ Merk:
 Til testing på PC uten nett kan du kjøre `npm start` og åpne `http://localhost:8080`. Data lagres da per adresse,
 så `localhost` og GitHub Pages har hver sine data.
 
+### Høykant eller liggende?
+
+**Anbefalt: høykant (stående).**
+
+- Med skjermtastaturet oppe får hele registreringsskjemaet plass over tastaturet: alle felt, samtykke og «Lagre».
+- Skjemaet vises i én kolonne, så det er lett å fylle ut stående ved standen.
+
+**Liggende fungerer også**, men tastaturet tar omtrent halve skjermen.
+
+- Appen gjør da toppfeltet og skjemaet mer kompakt, og feltet du skriver i holdes synlig.
+- Liggende passer best hvis dere bruker stoppeklokken i appen, fordi START- og STOPP-knappene blir større.
+
+Uansett retning bør du **låse rotasjonen** på nettbrettet (hurtiginnstillinger → «Rotasjonslås»), så skjermen ikke snur
+seg midt i en registrering.
+
+**Skjermtastaturet er tilpasset hvert felt:**
+
+| Felt | Tastatur |
+|---|---|
+| Navn og firma | Stor forbokstav |
+| E-post | @-tastatur |
+| Telefon | Talltastatur |
+| Tid | Talltastatur med komma. Over ett minutt kan tiden skrives som sekunder, f.eks. `65,20`. |
+
+«Neste» på tastaturet hopper til neste felt, og etter telefonfeltet lukkes tastaturet.
+
+**Personvern på delt nettbrett:** Slå av autoutfylling i Chrome (*Innstillinger → Adresser og mer* og
+*Betalingsmåter* → av). Slå også av ordforslag og innlæring av nye ord i tastaturet (Gboard: *Innstillinger →
+Retting av tekst / Forslag*). Da foreslår ikke nettbrettet navn og e-post fra forrige deltaker.
+
 ### Anbefalte innstillinger på nettbrettet
 
 - **Automatiske nedlastinger:** Første gang en backup lastes ned, svarer du **Tillat** hvis Chrome spør om
@@ -319,6 +349,8 @@ tests/           Automatiske tester + lokal server
       **Skjerm holdes våken = Aktiv**.
 - [ ] Flymodus er på og appen startet på nytt: alt virker.
 - [ ] Batterioptimalisering er av, nettbrettet står på lader, og app-festing er på.
+- [ ] Rotasjonen er låst (helst høykant), og autoutfylling i Chrome og ordforslag i tastaturet er slått av.
+- [ ] Fyll ut skjemaet med skjermtastaturet: alle felt og «Lagre» kan nås uten å lukke tastaturet.
 
 **Funksjonstest (med testdeltakere)**
 

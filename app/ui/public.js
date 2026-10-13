@@ -118,6 +118,15 @@ export class PublicUI {
     form.addEventListener('change', () => { saveDraft(); update(); });
     form.addEventListener('focusout', (e) => { if (e.target.name) { touched.add(e.target.name); update(); } });
     form.addEventListener('submit', (e) => { e.preventDefault(); this.saveRegistration(read()); });
+    // Enter/«Neste» på skjermtastaturet går til neste felt; etter siste felt lukkes tastaturet.
+    const order = ['firstName', 'lastName', 'company', 'email', 'phone'];
+    form.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !order.includes(e.target.name)) return;
+      e.preventDefault();
+      const next = form.elements[order[order.indexOf(e.target.name) + 1]];
+      if (next) next.focus(); else { e.target.blur(); form.elements.consent.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    });
+    keepFocusedVisible(form);
     $('#cancel').addEventListener('click', async () => {
       const r = read();
       if (['firstName', 'lastName', 'company', 'email', 'phone'].some((k) => r[k].trim())) {
@@ -202,7 +211,7 @@ export class PublicUI {
         <div class="field"><input id="tt" class="time-input" type="text" inputmode="decimal" placeholder="00,00" autocomplete="off" enterkeyhint="done"></div>
         <div id="tt-err" style="color:var(--error);min-height:22px"></div>
         <button type="submit" class="btn" id="tt-save" disabled style="min-width:320px">Lagre tid</button>
-        <p class="muted" style="margin:0">Skriv f.eks. 12,34 eller 1:05,20</p>
+        <p class="muted" style="margin:0">Skriv f.eks. 12,34 – over ett minutt: 65,20 eller 1:05,20</p>
       </form>`;
     $('#timing-actions').innerHTML = '<button class="btn secondary small" id="later">Avbryt – tiden legges inn senere</button>';
     const input = $('#tt');
@@ -349,6 +358,14 @@ export class PublicUI {
 
 function field(name, label, type, autocap, inputmode) {
   return `<div class="field"><label for="${name}">${label}</label>
-    <input id="${name}" name="${name}" type="${type}" autocomplete="off" autocapitalize="${autocap}" spellcheck="false"
-      ${inputmode ? `inputmode="${inputmode}"` : ''} enterkeyhint="next"><div class="err"></div></div>`;
+    <input id="${name}" name="${name}" type="${type}" autocomplete="off" autocorrect="off" autocapitalize="${autocap}" spellcheck="false"
+      ${inputmode ? `inputmode="${inputmode}"` : ''} enterkeyhint="${name === 'phone' ? 'done' : 'next'}"><div class="err"></div></div>`;
+}
+
+// Når skjermtastaturet åpnes, holdes feltet man skriver i synlig midt på skjermen.
+function keepFocusedVisible(root) {
+  root.addEventListener('focusin', (e) => {
+    if (e.target.tagName !== 'INPUT') return;
+    setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+  });
 }
