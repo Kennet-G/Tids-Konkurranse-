@@ -74,6 +74,7 @@ export function createState() {
     attemptsByParticipant: new Map(), // participantId -> [attemptId]
     emailIndex: new Map(), // normalisert e-post -> Set(participantId)
     phoneIndex: new Map(), // normalisert telefon -> Set(participantId)
+    identityIndex: new Map(), // navn+firma+e-post+telefon -> Set(participantId)
     settings: { ...DEFAULT_SETTINGS },
     result: null,
     resultHistory: [],
@@ -92,6 +93,28 @@ export function normEmail(e) {
 export function normPhone(p) {
   const digits = String(p ?? '').replace(/\D/g, '');
   return digits.length >= 8 ? digits.slice(-8) : '';
+}
+
+function normText(v) {
+  return String(v ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// Samme person = likt fornavn, etternavn, firma, e-post OG telefon (uavhengig av store/små bokstaver,
+// mellomrom og telefonformat). Flere personer kan ha samme navn, e-post eller telefon.
+export function identityKey(c) {
+  return [normText(c.firstName), normText(c.lastName), normText(c.company), normEmail(c.email), normPhone(c.phone) || String(c.phone ?? '').replace(/\D/g, '')].join('\u0001');
+}
+
+function indexParticipant(state, p) {
+  addIndex(state.emailIndex, normEmail(p.email), p.id);
+  addIndex(state.phoneIndex, normPhone(p.phone), p.id);
+  addIndex(state.identityIndex, identityKey(p), p.id);
+}
+
+function unindexParticipant(state, p) {
+  removeIndex(state.emailIndex, normEmail(p.email), p.id);
+  removeIndex(state.phoneIndex, normPhone(p.phone), p.id);
+  removeIndex(state.identityIndex, identityKey(p), p.id);
 }
 
 function addIndex(map, key, id) {
@@ -114,14 +137,18 @@ export function findEmailDuplicates(state, email, exceptId = null) {
   return [...set].filter((id) => id !== exceptId).map((id) => state.participants.get(id)).filter(Boolean);
 }
 
-// Finner en tidligere registrering med samme e-post eller telefon (tidligst registrerte først).
-export function findExistingParticipant(state, { email, phone } = {}) {
-  const ids = new Set([...(state.emailIndex.get(normEmail(email)) ?? [])]);
-  const ph = normPhone(phone);
-  if (ph) for (const id of state.phoneIndex.get(ph) ?? []) ids.add(id);
-  const found = [...ids].map((id) => state.participants.get(id)).filter(Boolean);
+// Finner en tidligere registrering av SAMME person: navn, firma, e-post og telefon må alle være like.
+export function findExistingParticipant(state, contact = {}) {
+  const found = [...(state.identityIndex.get(identityKey(contact)) ?? [])].map((id) => state.participants.get(id)).filter(Boolean);
   found.sort((a, b) => (a.nr ?? 0) - (b.nr ?? 0));
   return found[0] ?? null;
+}
+
+// Andre deltakere som deler e-post eller telefon (ikke nødvendigvis samme person) – vises som info i admin.
+export function sharedContacts(state, p) {
+  const ids = new Set([...(state.emailIndex.get(normEmail(p.email)) ?? []), ...(state.phoneIndex.get(normPhone(p.phone)) ?? [])]);
+  ids.delete(p.id);
+  return [...ids].map((id) => state.participants.get(id)).filter(Boolean);
 }
 
 // Forsøk som teller (ikke slettede). Ugyldige forsøk er med – de er fortsatt «brukt».
@@ -170,19 +197,16 @@ export function applyEvent(state, ev) {
       };
       state.participants.set(p.id, p);
       if (!state.attemptsByParticipant.has(p.id)) state.attemptsByParticipant.set(p.id, []);
-      addIndex(state.emailIndex, normEmail(p.email), p.id);
-      addIndex(state.phoneIndex, normPhone(p.phone), p.id);
+      indexParticipant(state, p);
       break;
     }
     case EventType.PARTICIPANT_UPDATED: {
       const p = state.participants.get(d.participantId);
       if (!p) { state.warnings.push({ eventId: ev.id, message: `Endring for ukjent deltaker ${d.participantId}` }); break; }
       const changes = d.changes || {};
-      if ('email' in changes) removeIndex(state.emailIndex, normEmail(p.email), p.id);
-      if ('phone' in changes) removeIndex(state.phoneIndex, normPhone(p.phone), p.id);
+      unindexParticipant(state, p);
       for (const f of CONTACT_FIELDS) if (f in changes) p[f] = String(changes[f] ?? '');
-      if ('email' in changes) addIndex(state.emailIndex, normEmail(p.email), p.id);
-      if ('phone' in changes) addIndex(state.phoneIndex, normPhone(p.phone), p.id);
+      indexParticipant(state, p);
       p.updatedAt = ev.ts;
       break;
     }
@@ -297,7 +321,7 @@ export function describeEvent(ev, formatCs = (cs) => String(cs)) {
     case EventType.COMPETITION_CREATED: return `«${d.name}» – vinnermodus ${d.winnerMode === 'median' ? 'nærmest median' : 'beste tid'}, tidtaking i appen ${d.timerEnabled ? 'på' : 'av'}`;
     case EventType.PARTICIPANT_REGISTERED: return `${d.firstName} ${d.lastName}, ${d.company}, ${d.email}${d.phone ? `, ${d.phone}` : ''}`;
     case EventType.PARTICIPANT_UPDATED: return Object.entries(d.changes || {}).map(([k, v]) => `${k}: «${d.previous?.[k] ?? ''}» → «${v}»`).join('; ') + (d.reason ? ` (${d.reason})` : '');
-    case EventType.REREGISTRATION_BLOCKED: return `Forsøkte å registrere seg på nytt (${d.matchedOn === 'phone' ? 'samme telefon' : 'samme e-post'}) – har allerede hatt forsøket sitt`;
+    case EventType.REREGISTRATION_BLOCKED: return 'Forsøkte å registrere seg på nytt med likt navn, firma, e-post og telefon – har allerede hatt forsøket sitt';
     case EventType.ATTEMPT_STARTED: return `Forsøk ${short(d.attemptId)} startet`;
     case EventType.ATTEMPT_ABORTED: return `Forsøk ${short(d.attemptId)} avbrutt${d.reason ? `: ${d.reason}` : ''}`;
     case EventType.ATTEMPT_RECORDED: return `Tid ${formatCs(d.cs)} (${METHOD[d.method] ?? d.method})${d.note ? ` – ${d.note}` : ''}`;

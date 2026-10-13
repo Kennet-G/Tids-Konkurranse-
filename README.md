@@ -1,6 +1,6 @@
-# TROX Tidskonkurranse
+# TROX Tidtaking
 
-App for registrering og tidtaking i TROX Auranor sine konkurranser, for eksempel på stand under VVS-dagene.
+**TROX Tidtaking** er en app for registrering og tidtaking i TROX Auranor sine konkurranser, for eksempel på stand under VVS-dagene.
 Appen er en progressiv webapp (PWA) og virker på **Android-nettbrett og PC** (Chrome eller Edge).
 
 - Den virker **helt uten nett**.
@@ -66,8 +66,12 @@ Registrering skjer manuelt. Appen bruker ikke QR-skanning.
 
 ### Ett forsøk per deltaker
 
-Appen kjenner igjen deltakere på **e-post**, uavhengig av store og små bokstaver, eller på **telefonnummer**.
-Telefonnummer sammenlignes på de siste 8 sifrene, så `+47 912 34 567` og `91234567` regnes som samme nummer.
+En ny registrering regnes som **samme person** bare når **navn, firma, e-post og telefon** alle er like.
+Store og små bokstaver, ekstra mellomrom og telefonformat spiller ingen rolle, så `+47 912 34 567` og `91234567`
+regnes som samme nummer.
+
+Flere personer kan altså ha samme navn, eller dele e-post eller telefon, for eksempel `post@firma.no`. Slike
+deltakere merkes med «Delt kontakt» i adminpanelet, som informasjon.
 
 - **Har deltakeren allerede fått en tid**, vises *«Du har allerede hatt forsøket ditt, [fornavn]!»*.
   Forsøket på ny registrering logges, og deltakeren merkes med «Prøvde igjen» i adminpanelet.
@@ -290,7 +294,7 @@ tests/           Automatiske tester + lokal server
 | Testfil | Dekker |
 |---|---|
 | `validation.test.js` | Skjema, e-post, telefon og samtykke |
-| `registration.test.js` | Konkurranseoppsett, tidtaking av/på, registrering, gjenkjenning på e-post og telefon, ett forsøk per deltaker, endre og slette tid, ugyldig/gyldig, retting av kontaktinfo |
+| `registration.test.js` | Konkurranseoppsett, tidtaking av/på, registrering, samme person bare ved likt navn, firma, e-post og telefon, ett forsøk per deltaker, endre og slette tid, ugyldig/gyldig, retting av kontaktinfo |
 | `time.test.js` | Hundredeler, formatering, tolking av tid, filnavn |
 | `winner.test.js` | Median, statistikk, begge vinnermoduser, uavgjort, slettede og endrede tider, ytelse med 1500 deltakere |
 | `restore.test.js` | Excel-eksport (fire faner, ingen formler), gjenoppretting, ingen duplikater, sammenslåing |
@@ -320,7 +324,8 @@ tests/           Automatiske tester + lokal server
 
 - [ ] «Lagre» er grå til alle påkrevde felt er gyldige og samtykke er krysset av.
 - [ ] Ekstern stoppeklokke: Registrer → tast tid → grønn skjerm. Ingen tid vises etter lagring.
-- [ ] Registrer samme e-post (eller telefon) på nytt → «Du har allerede hatt forsøket ditt».
+- [ ] Registrer nøyaktig samme navn, firma, e-post og telefon på nytt → «Du har allerede hatt forsøket ditt».
+- [ ] Registrer samme navn med annen e-post → godtas som ny deltaker.
 - [ ] Slå på **stoppeklokke i appen** i admin → START/STOPP vises for neste deltaker.
 - [ ] Trykk START → lukk appen → åpne igjen → forsøket er gjenopprettet, og STOPP virker.
 - [ ] Fyll ut halve skjemaet → last siden på nytt → skjemaet er der fortsatt.

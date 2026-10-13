@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildState, applyEvent, createState, findEmailDuplicates, findExistingParticipant, hasHadAttempt, activeAttempts, attemptsFor, makeEvent, normPhone } from '../app/core/events.js';
+import { buildState, applyEvent, createState, findEmailDuplicates, findExistingParticipant, sharedContacts, hasHadAttempt, activeAttempts, attemptsFor, makeEvent, normPhone } from '../app/core/events.js';
 import { eventLog } from './helpers.js';
 
 test('konkurranse opprettes med navn og innstillinger', () => {
@@ -46,15 +46,31 @@ test('samme deltaker-ID registrert to ganger beholder første', () => {
   assert.equal(s.warnings.length, 1);
 });
 
-test('tidligere registrering finnes på e-post (uansett store/små bokstaver) eller telefon', () => {
+test('samme person kjennes igjen bare når navn, firma, e-post OG telefon er like', () => {
   const log = eventLog();
-  log.register('p1', 'Ola', 'N', { email: 'Ola@Firma.no', phone: '912 34 567' });
+  log.register('p1', 'Ola', 'Nordmann', { company: 'Rør AS', email: 'Ola@Firma.no', phone: '912 34 567' });
   const s = buildState(log.events);
-  assert.equal(findExistingParticipant(s, { email: ' ola@firma.NO' })?.id, 'p1');
-  assert.equal(findExistingParticipant(s, { email: 'annen@x.no', phone: '+47 91234567' })?.id, 'p1');
-  assert.equal(findExistingParticipant(s, { email: 'annen@x.no', phone: '0047 912 34 567' })?.id, 'p1');
-  assert.equal(findExistingParticipant(s, { email: 'annen@x.no', phone: '' }), null);
-  assert.equal(findExistingParticipant(s, { email: 'annen@x.no', phone: '1234' }), null, 'for kort nummer matcher ikke');
+  const ola = { firstName: 'Ola', lastName: 'Nordmann', company: 'Rør AS', email: 'ola@firma.no', phone: '91234567' };
+  assert.equal(findExistingParticipant(s, ola)?.id, 'p1');
+  assert.equal(findExistingParticipant(s, { ...ola, firstName: ' OLA ', company: 'rør  as', email: ' OLA@firma.NO', phone: '+47 912 34 567' })?.id, 'p1',
+    'store/små bokstaver, mellomrom og telefonformat spiller ingen rolle');
+  assert.equal(findExistingParticipant(s, { ...ola, email: 'ola2@firma.no' }), null, 'annen e-post = ny deltaker');
+  assert.equal(findExistingParticipant(s, { ...ola, phone: '98765432' }), null, 'annen telefon = ny deltaker');
+  assert.equal(findExistingParticipant(s, { ...ola, phone: '' }), null, 'uten telefon = ny deltaker');
+  assert.equal(findExistingParticipant(s, { ...ola, company: 'Annet AS' }), null, 'annet firma = ny deltaker');
+  assert.equal(findExistingParticipant(s, { ...ola, firstName: 'Kari' }), null, 'annet navn = ny deltaker');
+});
+
+test('flere kan ha samme navn, eller dele e-post/telefon', () => {
+  const log = eventLog();
+  log.register('p1', 'Ola', 'Nordmann', { company: 'Rør AS', email: 'post@ror.no', phone: '' });
+  log.register('p2', 'Ola', 'Nordmann', { company: 'VVS AS', email: 'ola@vvs.no', phone: '' });
+  log.register('p3', 'Kari', 'Hansen', { company: 'Rør AS', email: 'post@ror.no', phone: '' });
+  const s = buildState(log.events);
+  assert.equal(s.participants.size, 3);
+  assert.equal(findExistingParticipant(s, { firstName: 'Ola', lastName: 'Nordmann', company: 'VVS AS', email: 'ola@vvs.no', phone: '' })?.id, 'p2');
+  assert.deepEqual(sharedContacts(s, s.participants.get('p1')).map((p) => p.id), ['p3'], 'delt e-post vises som info');
+  assert.deepEqual(sharedContacts(s, s.participants.get('p2')), []);
 });
 
 test('telefon normaliseres til siste 8 sifre', () => {
@@ -96,8 +112,8 @@ test('kontaktinfo kan rettes, og e-post/telefon-indeksene følger med', () => {
   assert.equal(p.company, 'Nytt AS');
   assert.equal(p.firstName, 'Ola');
   assert.ok(p.updatedAt);
-  assert.equal(findExistingParticipant(s, { email: 'ola@a.no', phone: '91234567' }), null);
-  assert.equal(findExistingParticipant(s, { phone: '98765432' })?.id, 'p1');
+  assert.equal(findExistingParticipant(s, { firstName: 'Ola', lastName: 'N', company: 'Firma AS', email: 'ola@a.no', phone: '91234567' }), null, 'gammel identitet finnes ikke lenger');
+  assert.equal(findExistingParticipant(s, { firstName: 'Ola', lastName: 'N', company: 'Nytt AS', email: 'ola@b.no', phone: '98765432' })?.id, 'p1');
   assert.equal(findEmailDuplicates(s, 'ola@b.no', 'p1').length, 0);
 });
 

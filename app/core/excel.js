@@ -28,7 +28,7 @@ const txt = (v) => (v == null ? '' : String(v));
 export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = '' } = {}) {
   const state = buildState(events);
   const wb = XLSX.utils.book_new();
-  wb.Props = { Title: `TROX tidskonkurranse – ${state.settings.name}`, Author: 'TROX Auranor', CreatedDate: exportedAt };
+  wb.Props = { Title: `TROX Tidtaking – ${state.settings.name}`, Author: 'TROX Auranor', CreatedDate: exportedAt };
 
   // Deltakere
   const bestById = new Map(bestTimes(state).map((b) => [b.participant.id, b]));
@@ -80,7 +80,7 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
   const r = rank(state, mode);
   const live = determineWinner(state, mode);
   const res = [
-    ['TROX Auranor – tidskonkurranse', txt(state.settings.name)],
+    ['TROX Tidtaking – TROX Auranor', txt(state.settings.name)],
     ['Eksportert', formatDateTime(exportedAt.toISOString())],
     ['Enhet', txt(device)],
     ['', ''],

@@ -1,7 +1,7 @@
 {
-  "name": "TROX Tidskonkurranse",
+  "name": "TROX Tidtaking",
   "short_name": "TROX Tid",
-  "description": "Registrering og tidtaking for TROX Auranor sine konkurranser – virker uten nett",
+  "description": "TROX Tidtaking – registrering og tidtaking, virker uten nett",
   "lang": "nb",
   "start_url": "./index.html",
   "scope": "./",

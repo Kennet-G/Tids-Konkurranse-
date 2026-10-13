@@ -8,7 +8,7 @@ import { chooseNewPin } from './auth.js';
 export async function renderChooser(host, { registry, activeId, onOpen, onCreate, onRestore }) {
   const list = await registry.list();
   host.innerHTML = `<section class="screen chooser"><div class="inner">
-    <h1>Tidskonkurranser</h1>
+    <h1>Konkurranser</h1>
     <p class="lead muted" style="margin-top:0">Velg konkurransen som skal være aktiv på denne enheten.</p>
     <div class="comp-list">${list.length ? list.map((c) => `<button class="comp-card ${c.id === activeId ? 'active' : ''}" data-id="${esc(c.id)}">
         <span class="comp-ikon">⏱</span><span><strong>${esc(c.name)}</strong><small>Opprettet ${formatDateTime(c.createdAt).slice(0, 10)}${c.id === activeId ? ' · sist brukt på denne enheten' : ''}</small></span><span class="pil">›</span></button>`).join('')

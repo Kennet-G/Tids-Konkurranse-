@@ -1,6 +1,6 @@
 // Adminpanel for ÉN konkurranse (krever konkurransens PIN): deltakere, tider, resultat/vinner,
 // hendelseslogg og innstillinger (navn, tidtaking av/på, PIN, backup/import, bytt og slett konkurranse).
-import { EventType, EVENT_LABELS, attemptsFor, describeEvent, findEmailDuplicates, findExistingParticipant, fullName, uuid, CONTACT_FIELDS } from '../core/events.js';
+import { EventType, EVENT_LABELS, attemptsFor, describeEvent, findExistingParticipant, identityKey, sharedContacts, fullName, uuid, CONTACT_FIELDS } from '../core/events.js';
 import { computeStats, determineWinner, rank, bestTimes } from '../core/stats.js';
 import { formatCs, formatCsPrecise, formatDateTime, parseTimeToCs } from '../core/time.js';
 import { normalizeContact, validateRegistration } from '../core/validation.js';
@@ -130,7 +130,7 @@ export class AdminUI {
     const q = v.q.trim().toLowerCase();
     let rows = [...s.participants.values()].map((p) => {
       const atts = attemptsFor(s, p.id).filter((a) => !a.deleted);
-      return { p, name: fullName(p), count: atts.length, best: best.get(p.id) ?? null, invalidOnly: atts.length > 0 && !best.has(p.id) };
+      return { p, name: fullName(p), count: atts.length, best: best.get(p.id) ?? null, invalidOnly: atts.length > 0 && !best.has(p.id), shared: sharedContacts(s, p) };
     });
     if (q) rows = rows.filter((r) => `${r.p.nr}\u0000${r.name}\u0000${r.p.company}\u0000${r.p.email}\u0000${r.p.phone}`.toLowerCase().includes(q));
     const key = { nr: (r) => r.p.nr, name: (r) => r.name.toLowerCase(), company: (r) => r.p.company.toLowerCase(), email: (r) => r.p.email.toLowerCase(),
@@ -141,7 +141,7 @@ export class AdminUI {
       <td class="num">${r.p.nr}</td><td><strong>${esc(r.name)}</strong></td><td>${esc(r.p.company)}</td><td>${esc(r.p.email)}</td><td>${esc(r.p.phone)}</td>
       <td class="small">${formatDateTime(r.p.registeredAt)}</td>
       <td class="num">${r.best != null ? `<strong>${formatCs(r.best)}</strong>` : r.invalidOnly ? '<span class="tag red">Ugyldig</span>' : '<span class="tag">Ingen tid</span>'}</td>
-      <td>${r.count > 1 ? `<span class="tag blue">${r.count} tider</span>` : ''}${r.p.blockedAttempts ? ` <span class="tag warn">Prøvde igjen ×${r.p.blockedAttempts}</span>` : ''}${r.p.updatedAt ? ' <span class="tag">Endret</span>' : ''}</td></tr>`).join('')
+      <td>${r.count > 1 ? `<span class="tag blue">${r.count} tider</span>` : ''}${r.p.blockedAttempts ? ` <span class="tag warn">Prøvde igjen ×${r.p.blockedAttempts}</span>` : ''}${r.shared.length ? ` <span class="tag" title="Deler e-post eller telefon med en annen deltaker">Delt kontakt: nr ${r.shared.map((o) => o.nr).join(', ')}</span>` : ''}${r.p.updatedAt ? ' <span class="tag">Endret</span>' : ''}</td></tr>`).join('')
       || '<tr><td colspan="8" class="muted">Ingen deltakere</td></tr>';
     this.moreButton($('#p-more', body), rows.length, v, () => this.fillParticipants(body));
   }
@@ -175,7 +175,7 @@ export class AdminUI {
     const contact = normalizeContact(res);
     const existing = findExistingParticipant(this.state, contact);
     if (existing) {
-      const go = await modal({ kind: 'warn', title: 'Finnes allerede', html: `<p>${esc(fullName(existing))} (nr ${existing.nr}) har samme e-post eller telefon.</p>`,
+      const go = await modal({ kind: 'warn', title: 'Finnes allerede', html: `<p>${esc(fullName(existing))} (nr ${existing.nr}) er registrert med nøyaktig samme navn, firma, e-post og telefon.</p>`,
         buttons: [{ label: 'Åpne eksisterende', value: 'open', cls: 'secondary' }, { label: 'Registrer likevel', value: 'new' }] });
       if (go === 'open') return this.openDetail(existing.id);
       if (go !== 'new') return;
@@ -246,14 +246,12 @@ export class AdminUI {
     const previous = {};
     for (const f of CONTACT_FIELDS) if (next[f] !== p[f]) { changes[f] = next[f]; previous[f] = p[f]; }
     if (!Object.keys(changes).length) return toast('Ingen endringer', 'info');
-    if ('email' in changes) {
-      const dups = findEmailDuplicates(this.state, next.email, id);
-      if (dups.length) {
-        const go = await modal({ kind: 'warn', title: 'E-posten finnes på en annen deltaker',
-          html: `<ul>${dups.map((d) => `<li>${esc(fullName(d))}, ${esc(d.company)} – nr ${d.nr}</li>`).join('')}</ul><p>Lagre likevel?</p>`,
-          buttons: [{ label: 'Avbryt', value: false, cls: 'secondary' }, { label: 'Lagre likevel', value: true }] });
-        if (!go) return;
-      }
+    const twin = [...this.state.participants.values()].find((o) => o.id !== id && identityKey(o) === identityKey(next));
+    if (twin) {
+      const go = await modal({ kind: 'warn', title: 'Identisk med en annen deltaker',
+        html: `<p>${esc(fullName(twin))} (nr ${twin.nr}) har nøyaktig samme navn, firma, e-post og telefon. Lagre likevel?</p>`,
+        buttons: [{ label: 'Avbryt', value: false, cls: 'secondary' }, { label: 'Lagre likevel', value: true }] });
+      if (!go) return;
     }
     await this.save(EventType.PARTICIPANT_UPDATED, { participantId: id, changes, previous, reason: form.elements.reason.value.trim() }, 'Kontaktinfo lagret');
     this.refresh(true);

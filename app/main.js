@@ -60,7 +60,7 @@ async function closeCurrent() {
 
 async function showChooser() {
   await closeCurrent();
-  setHeader('Tidskonkurranse', 'TROX Auranor', false);
+  setHeader('Tidtaking', 'TROX Auranor', false);
   $('#st-backup').innerHTML = '';
   await renderChooser(host, {
     registry,
@@ -76,7 +76,7 @@ function setHeader(title, subtitle, inCompetition) {
   ui.subtitle.textContent = subtitle;
   ui.admin.hidden = !inCompetition;
   ui.switch.hidden = !inCompetition;
-  document.title = `${title} – TROX`;
+  document.title = inCompetition ? `${title} – TROX Tidtaking` : 'TROX Tidtaking';
 }
 
 async function openCompetition(id) {
@@ -103,11 +103,11 @@ async function openCompetition(id) {
     store, backup, registry, competitionId: id,
     onClose: () => {},
     onSwitch: () => showChooser(),
-    onRenamed: (name) => setHeader(name, 'Tidskonkurranse · TROX Auranor', true),
+    onRenamed: (name) => setHeader(name, 'TROX Tidtaking', true),
     onDeleted: () => deleteCompetition(id),
   });
   current = { id, store, backup, pub, admin };
-  setHeader(store.state.settings.name || rec.name, 'Tidskonkurranse · TROX Auranor', true);
+  setHeader(store.state.settings.name || rec.name, 'TROX Tidtaking', true);
   pub.start();
 }
 

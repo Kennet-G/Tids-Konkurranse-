@@ -1,6 +1,6 @@
 // Publikumsskjermen for én konkurranse: instruksjoner, registrering og ett forsøk per deltaker.
 // VIKTIG: Denne skjermen viser ALDRI tider, rangering eller ledere (unntak: tiden operatøren selv taster inn).
-import { EventType, findExistingParticipant, hasHadAttempt, fullName, makeEvent, uuid, normEmail } from '../core/events.js';
+import { EventType, findExistingParticipant, hasHadAttempt, fullName, makeEvent, uuid } from '../core/events.js';
 import { validateRegistration, normalizeContact } from '../core/validation.js';
 import { elapsedCs, parseTimeToCs } from '../core/time.js';
 import { $, esc, modal, toast, vibrate, debounce } from './dom.js';
@@ -52,7 +52,7 @@ export class PublicUI {
     this.render(`<section class="screen home">
       <div class="info">
         <h1>Hvor rask er du?</h1>
-        <p class="lead">Bli med i TROX sin tidskonkurranse – <strong class="accent">${esc(this.settings.name)}</strong></p>
+        <p class="lead"><strong class="accent">${esc(this.settings.name)}</strong></p>
         <ol class="steps">
           <li>Registrer deg med navn, firma og e-post</li>
           ${timer ? '<li>Trykk START – og løs oppgaven så raskt du kan</li><li>Trykk STOPP når du er ferdig</li>'
@@ -139,10 +139,9 @@ export class PublicUI {
     this.busy = true;
     try {
       if (existing) {
-        const matchedOn = normEmail(existing.email) === normEmail(contact.email) ? 'email' : 'phone';
         if (hasHadAttempt(this.store.state, existing.id)) {
           // Ett forsøk per deltaker.
-          await this.store.record(EventType.REREGISTRATION_BLOCKED, { participantId: existing.id, matchedOn }).catch((e) => console.error(e));
+          await this.store.record(EventType.REREGISTRATION_BLOCKED, { participantId: existing.id, matchedOn: 'identity' }).catch((e) => console.error(e));
           await this.store.setSession({ draft: null });
           return this.showInfo(`Du har allerede hatt forsøket ditt, ${existing.firstName}!`,
             'Hver deltaker kan være med én gang. Takk for at du var med – vinneren kontaktes etter konkurransen.');
