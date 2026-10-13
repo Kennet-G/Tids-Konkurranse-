@@ -1,6 +1,6 @@
 // Excel-eksport og -gjenoppretting. SheetJS (XLSX) sendes inn som parameter slik at
 // modulen kan testes i Node og brukes med lokal /lib/xlsx.full.min.js i nettleseren.
-import { EventType, EVENT_LABELS, attemptsFor, buildState, describeEvent, fullName } from './events.js';
+import { EventType, EVENT_LABELS, attemptsFor, buildState, describeEvent, fullName, overrideText } from './events.js';
 import { computeStats, determineWinner, rank, bestTimes } from './stats.js';
 import { formatCs, formatCsPrecise, formatDateTime } from './time.js';
 
@@ -40,13 +40,13 @@ export function buildWorkbook(XLSX, events, { exportedAt = new Date(), device = 
       return [
         p.nr, txt(p.firstName), txt(p.lastName), txt(p.company), txt(p.email), txt(p.phone),
         p.consent ? 'Ja' : 'Nei', formatDateTime(p.registeredAt), p.updatedAt ? formatDateTime(p.updatedAt) : '',
-        atts.length, best ? formatCs(best.bestCs) : '', best ? best.bestCs : '', p.blockedAttempts || '', txt(p.id),
+        atts.length, best ? formatCs(best.bestCs) : '', best ? best.bestCs : '', p.override ? txt(`Ja – ${overrideText(p.override)}`) : '', p.blockedAttempts || '', txt(p.id),
       ];
     });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX,
     ['Nr', 'Fornavn', 'Etternavn', 'Firma', 'E-post', 'Telefon', 'Samtykke', 'Registrert', 'Sist endret',
-      'Antall forsøk', 'Beste tid', 'Beste tid (hundredeler)', 'Avviste nye registreringer', 'Deltaker-ID'],
-    pRows, [6, 16, 18, 24, 30, 16, 10, 20, 20, 12, 12, 14, 14, 38]), SHEETS.PARTICIPANTS);
+      'Antall forsøk', 'Beste tid', 'Beste tid (hundredeler)', 'Overstyrt av admin', 'Stoppede nye registreringer', 'Deltaker-ID'],
+    pRows, [6, 16, 18, 24, 30, 16, 10, 20, 20, 12, 12, 14, 30, 14, 38]), SHEETS.PARTICIPANTS);
 
   // Forsøk (slettede tas med og merkes – de finnes også i hendelsesloggen)
   const aRows = [...state.attempts.values()]

@@ -1,6 +1,6 @@
 // Adminpanel for ÉN konkurranse (krever konkurransens PIN): deltakere, tider, resultat/vinner,
 // hendelseslogg og innstillinger (navn, tidtaking av/på, PIN, backup/import, bytt og slett konkurranse).
-import { EventType, EVENT_LABELS, attemptsFor, describeEvent, findExistingParticipant, identityKey, sharedContacts, fullName, uuid, CONTACT_FIELDS } from '../core/events.js';
+import { EventType, EVENT_LABELS, attemptsFor, describeEvent, findExistingParticipant, identityKey, sharedContacts, contactMatch, overrideText, fullName, uuid, CONTACT_FIELDS } from '../core/events.js';
 import { computeStats, determineWinner, rank, bestTimes } from '../core/stats.js';
 import { formatCs, formatCsPrecise, formatDateTime, parseTimeToCs } from '../core/time.js';
 import { normalizeContact, validateRegistration } from '../core/validation.js';
@@ -141,7 +141,7 @@ export class AdminUI {
       <td class="num">${r.p.nr}</td><td><strong>${esc(r.name)}</strong></td><td>${esc(r.p.company)}</td><td>${esc(r.p.email)}</td><td>${esc(r.p.phone)}</td>
       <td class="small">${formatDateTime(r.p.registeredAt)}</td>
       <td class="num">${r.best != null ? `<strong>${formatCs(r.best)}</strong>` : r.invalidOnly ? '<span class="tag red">Ugyldig</span>' : '<span class="tag">Ingen tid</span>'}</td>
-      <td>${r.count > 1 ? `<span class="tag blue">${r.count} tider</span>` : ''}${r.p.blockedAttempts ? ` <span class="tag warn">Prøvde igjen ×${r.p.blockedAttempts}</span>` : ''}${r.shared.length ? ` <span class="tag" title="Deler e-post eller telefon med en annen deltaker">Delt kontakt: nr ${r.shared.map((o) => o.nr).join(', ')}</span>` : ''}${r.p.updatedAt ? ' <span class="tag">Endret</span>' : ''}</td></tr>`).join('')
+      <td>${r.count > 1 ? `<span class="tag blue">${r.count} tider</span>` : ''}${r.p.override ? ` <span class="tag blue" title="${esc(overrideText(r.p.override))}">Godkjent av admin</span>` : ''}${r.p.blockedAttempts ? ` <span class="tag warn" title="Nye registreringer med samme opplysninger er stoppet">Stoppet ×${r.p.blockedAttempts}</span>` : ''}${r.shared.length ? ` <span class="tag" title="Deler e-post eller telefon med en annen deltaker">Delt kontakt: nr ${r.shared.map((o) => o.nr).join(', ')}</span>` : ''}${r.p.updatedAt ? ' <span class="tag">Endret</span>' : ''}</td></tr>`).join('')
       || '<tr><td colspan="8" class="muted">Ingen deltakere</td></tr>';
     this.moreButton($('#p-more', body), rows.length, v, () => this.fillParticipants(body));
   }
@@ -180,8 +180,20 @@ export class AdminUI {
       if (go === 'open') return this.openDetail(existing.id);
       if (go !== 'new') return;
     }
+    let override;
+    const shared = existing ? [existing] : sharedContacts(this.state, contact);
+    if (existing) override = { kind: 'identical', matches: [existing.id], matchNrs: [existing.nr] };
+    else if (shared.length) {
+      const kinds = new Set(shared.map((p) => contactMatch(contact, p)));
+      const kind = kinds.has('both') || (kinds.has('email') && kinds.has('phone')) ? 'both' : kinds.has('phone') ? 'phone' : 'email';
+      const go = await modal({ kind: 'warn', title: 'Samme e-post eller telefon finnes',
+        html: `<ul>${shared.map((p) => `<li>${esc(fullName(p))}, ${esc(p.company)} (nr ${p.nr})</li>`).join('')}</ul><p>Registrere likevel? Det merkes som overstyrt av admin.</p>`,
+        buttons: [{ label: 'Avbryt', value: false, cls: 'secondary' }, { label: 'Registrer likevel', value: true }] });
+      if (!go) return;
+      override = { kind, matches: shared.map((p) => p.id), matchNrs: shared.map((p) => p.nr) };
+    }
     const participantId = uuid();
-    const ev = await this.save(EventType.PARTICIPANT_REGISTERED, { participantId, ...contact, consent: true, consentText: 'Registrert av admin', method: 'admin' }, `${contact.firstName} er registrert`);
+    const ev = await this.save(EventType.PARTICIPANT_REGISTERED, { participantId, ...contact, consent: true, consentText: 'Registrert av admin', method: 'admin', ...(override ? { override } : {}) }, `${contact.firstName} er registrert`);
     if (ev) this.openDetail(participantId);
   }
 
@@ -201,7 +213,8 @@ export class AdminUI {
     }
     body.innerHTML = `<div class="toolbar"><button class="btn secondary small" id="d-back">← Tilbake til listen</button>
         <h2 style="margin:0 0 0 12px">${esc(fullName(p))}</h2><span class="tag blue">Nr ${p.nr}</span>
-        ${p.blockedAttempts ? `<span class="tag warn">Prøvde å registrere seg igjen ${p.blockedAttempts} gang(er)</span>` : ''}</div>
+        ${p.override ? `<span class="tag blue">Godkjent av admin: ${esc(overrideText(p.override))}</span>` : ''}
+        ${p.blockedAttempts ? `<span class="tag warn">Nye registreringer stoppet ${p.blockedAttempts} gang(er)</span>` : ''}</div>
       <div class="panel"><h3>Tider</h3><div id="d-attempts">${attemptsHtml}</div>
         <div class="btn-row" style="justify-content:flex-start;margin-top:14px"><button class="btn small" id="d-addtime">+ Legg til tid</button></div></div>
       <div class="panel"><h3>Kontaktinfo</h3>

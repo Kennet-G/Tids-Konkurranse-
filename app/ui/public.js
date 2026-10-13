@@ -1,6 +1,6 @@
 // Publikumsskjermen for én konkurranse: instruksjoner, registrering og ett forsøk per deltaker.
 // VIKTIG: Denne skjermen viser ALDRI tider, rangering eller ledere (unntak: tiden operatøren selv taster inn).
-import { EventType, findExistingParticipant, hasHadAttempt, fullName, makeEvent, uuid } from '../core/events.js';
+import { EventType, findExistingParticipant, sharedContacts, contactMatch, hasHadAttempt, fullName, makeEvent, uuid } from '../core/events.js';
 import { validateRegistration, normalizeContact } from '../core/validation.js';
 import { elapsedCs, parseTimeToCs } from '../core/time.js';
 import { $, esc, modal, toast, vibrate, debounce } from './dom.js';
@@ -12,9 +12,10 @@ const AUTO_HOME_MS = 20 * 1000;
 const now = () => performance.timeOrigin + performance.now();
 
 export class PublicUI {
-  constructor(store, host) {
+  constructor(store, host, { requirePin } = {}) {
     this.store = store;
     this.host = host;
+    this.requirePin = requirePin ?? (async () => false);
     this.busy = false;
     this.homeTimer = null;
     this.unsub = store.onChange((ev) => {
@@ -144,42 +145,81 @@ export class PublicUI {
     if (this.busy) return;
     if (!validateRegistration(raw).valid) return;
     const contact = normalizeContact(raw);
-    const existing = findExistingParticipant(this.store.state, contact);
-    this.busy = true;
-    try {
-      if (existing) {
-        if (hasHadAttempt(this.store.state, existing.id)) {
-          // Ett forsøk per deltaker.
-          await this.store.record(EventType.REREGISTRATION_BLOCKED, { participantId: existing.id, matchedOn: 'identity' }).catch((e) => console.error(e));
-          await this.store.setSession({ draft: null });
-          return this.showInfo(`Du har allerede hatt forsøket ditt, ${existing.firstName}!`,
-            'Hver deltaker kan være med én gang. Takk for at du var med – vinneren kontaktes etter konkurransen.');
-        }
-        // Registrert før, men har ikke fått tid ennå: fortsett med samme registrering.
+    const state = this.store.state;
+    const existing = findExistingParticipant(state, contact);
+    if (existing) {
+      if (!hasHadAttempt(state, existing.id)) {
+        // Registrert før (helt lik), men har ikke fått tid ennå: fortsett med samme registrering.
         await this.store.setSession({ draft: null, participantId: existing.id, justRegistered: false });
         toast(`Du er allerede registrert, ${existing.firstName} – fortsett til forsøket`, 'info', 4000);
         return this.showAttempt();
       }
+      // Ett forsøk per deltaker – kan bare overstyres med admin-PIN.
+      await this.store.record(EventType.REREGISTRATION_BLOCKED, { participantId: existing.id, matchedOn: 'identity' }).catch((e) => console.error(e));
+      return this.showInfo(`Du har allerede hatt forsøket ditt, ${existing.firstName}!`,
+        'Hver deltaker kan være med én gang. Takk for at du var med – vinneren kontaktes etter konkurransen.',
+        { onOverride: () => this.overrideAndRegister(contact, [existing], 'identical') });
+    }
+    // Samme e-post eller telefon som en annen deltaker: stopp og vis varsel – admin kan overstyre med PIN.
+    const shared = sharedContacts(state, contact);
+    if (shared.length) {
+      const rows = shared.map((p) => ({ p, match: contactMatch(contact, p) }));
+      const kinds = new Set(rows.map((r) => r.match));
+      const kind = kinds.has('both') || (kinds.has('email') && kinds.has('phone')) ? 'both' : kinds.has('phone') ? 'phone' : 'email';
+      const label = { both: 'e-post og telefon', email: 'e-post', phone: 'telefon' };
+      vibrate([80, 60, 80]);
+      const choice = await modal({
+        kind: 'warn',
+        title: `Samme ${label[kind]} er allerede registrert`,
+        html: `<p class="lead" style="font-size:20px">Det finnes allerede en deltaker med samme ${label[kind]}:</p>
+          <ul style="font-size:19px">${rows.map(({ p, match }) => `<li><strong>${esc(fullName(p))}</strong>, ${esc(p.company)} (nr ${p.nr}) – samme ${label[match]}</li>`).join('')}</ul>
+          <p style="font-size:18px">Er dette en annen person, kan en fra standen godkjenne registreringen med admin-PIN.</p>`,
+        buttons: [{ label: 'Tilbake og rett', value: null, cls: 'secondary' }, { label: 'Overstyr med admin-PIN', value: 'override' }],
+      });
+      if (choice !== 'override') {
+        this.store.record(EventType.REREGISTRATION_BLOCKED, {
+          participantId: rows[0].p.id, matchedOn: kind, attempted: `${contact.firstName} ${contact.lastName}, ${contact.email}${contact.phone ? `, ${contact.phone}` : ''}`,
+        }).catch((e) => console.error(e));
+        return;
+      }
+      return this.overrideAndRegister(contact, shared, kind);
+    }
+    return this.register(contact);
+  }
+
+  async overrideAndRegister(contact, matches, kind) {
+    clearTimeout(this.homeTimer);
+    if (!(await this.requirePin('Overstyr – tast admin-PIN'))) return;
+    return this.register(contact, { override: { kind, matches: matches.map((p) => p.id), matchNrs: matches.map((p) => p.nr) } });
+  }
+
+  async register(contact, extra = {}) {
+    if (this.busy) return;
+    this.busy = true;
+    try {
       const participantId = uuid();
-      await this.store.record(EventType.PARTICIPANT_REGISTERED, { participantId, ...contact, consent: true, consentText: CONSENT_TEXT });
+      await this.store.record(EventType.PARTICIPANT_REGISTERED, { participantId, ...contact, consent: true, consentText: CONSENT_TEXT, ...extra });
       vibrate(200);
+      if (extra.override) toast('✓ Godkjent av admin', 'ok');
       await this.store.setSession({ draft: null, participantId, justRegistered: true });
       this.showAttempt();
     } catch (e) {
       console.error(e);
       vibrate([300, 100, 300]);
-      await modal({ title: 'LAGRING FEILET', kind: 'danger', html: `<p class="lead" style="color:var(--error)">Registreringen ble <strong>ikke</strong> lagret. Skjemaet er beholdt – prøv å trykke Lagre igjen.</p><p class="small muted">${esc(e?.message ?? e)}</p>` });
+      await modal({ title: 'LAGRING FEILET', kind: 'danger', html: `<p class="lead" style="color:var(--error)">Registreringen ble <strong>ikke</strong> lagret. Prøv igjen.</p><p class="small muted">${esc(e?.message ?? e)}</p>`, buttons: [{ label: 'OK', value: true }] });
     } finally {
       this.busy = false;
     }
   }
 
-  showInfo(title, text) {
+  showInfo(title, text, { onOverride } = {}) {
     vibrate([80, 60, 80]);
     this.render(`<section class="screen"><div class="result-info">
       <div class="icon">i</div><h1>${esc(title)}</h1><p class="lead" style="color:inherit;max-width:900px">${esc(text)}</p>
-      <div class="btn-row"><button class="btn primary" id="done" style="min-width:280px">OK</button></div></div></section>`);
+      <div class="btn-row"><button class="btn primary" id="done" style="min-width:280px">OK</button></div>
+      ${onOverride ? '<button class="btn ghost small" id="override" style="color:#cdeefc">Overstyr (admin-PIN)</button>' : ''}</div></section>`);
     $('#done').addEventListener('click', () => this.showHome());
+    $('#override')?.addEventListener('click', onOverride);
     this.homeTimer = setTimeout(() => this.showHome(), AUTO_HOME_MS);
   }
 

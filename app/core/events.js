@@ -28,7 +28,7 @@ export const EVENT_LABELS = Object.freeze({
   APP_STARTED: 'Konkurranse åpnet',
   PARTICIPANT_REGISTERED: 'Registrering',
   PARTICIPANT_UPDATED: 'Kontaktinfo endret',
-  REREGISTRATION_BLOCKED: 'Ny registrering avvist',
+  REREGISTRATION_BLOCKED: 'Registrering stoppet',
   ATTEMPT_STARTED: 'Forsøk startet',
   ATTEMPT_ABORTED: 'Forsøk avbrutt',
   ATTEMPT_RECORDED: 'Tid registrert',
@@ -194,6 +194,7 @@ export function applyEvent(state, ev) {
         registeredEventId: ev.id,
         updatedAt: null,
         blockedAttempts: 0,
+        override: d.override ?? null, // satt når admin har godkjent registreringen med PIN (lik/delt kontakt)
       };
       state.participants.set(p.id, p);
       if (!state.attemptsByParticipant.has(p.id)) state.attemptsByParticipant.set(p.id, []);
@@ -319,9 +320,11 @@ export function describeEvent(ev, formatCs = (cs) => String(cs)) {
   const d = ev.data || {};
   switch (ev.type) {
     case EventType.COMPETITION_CREATED: return `«${d.name}» – vinnermodus ${d.winnerMode === 'median' ? 'nærmest median' : 'beste tid'}, tidtaking i appen ${d.timerEnabled ? 'på' : 'av'}`;
-    case EventType.PARTICIPANT_REGISTERED: return `${d.firstName} ${d.lastName}, ${d.company}, ${d.email}${d.phone ? `, ${d.phone}` : ''}`;
+    case EventType.PARTICIPANT_REGISTERED: return `${d.firstName} ${d.lastName}, ${d.company}, ${d.email}${d.phone ? `, ${d.phone}` : ''}${d.override ? ` – OVERSTYRT av admin: ${overrideText(d.override)}` : ''}`;
     case EventType.PARTICIPANT_UPDATED: return Object.entries(d.changes || {}).map(([k, v]) => `${k}: «${d.previous?.[k] ?? ''}» → «${v}»`).join('; ') + (d.reason ? ` (${d.reason})` : '');
-    case EventType.REREGISTRATION_BLOCKED: return 'Forsøkte å registrere seg på nytt med likt navn, firma, e-post og telefon – har allerede hatt forsøket sitt';
+    case EventType.REREGISTRATION_BLOCKED: return d.matchedOn === 'identity'
+      ? 'Forsøkte å registrere seg på nytt med likt navn, firma, e-post og telefon – har allerede hatt forsøket sitt'
+      : `Samme ${d.matchedOn === 'phone' ? 'telefon' : d.matchedOn === 'both' ? 'e-post og telefon' : 'e-post'} som denne deltakeren – registrering av ${d.attempted ?? 'ny person'} ble ikke godkjent`;
     case EventType.ATTEMPT_STARTED: return `Forsøk ${short(d.attemptId)} startet`;
     case EventType.ATTEMPT_ABORTED: return `Forsøk ${short(d.attemptId)} avbrutt${d.reason ? `: ${d.reason}` : ''}`;
     case EventType.ATTEMPT_RECORDED: return `Tid ${formatCs(d.cs)} (${METHOD[d.method] ?? d.method})${d.note ? ` – ${d.note}` : ''}`;
@@ -340,6 +343,20 @@ export function describeEvent(ev, formatCs = (cs) => String(cs)) {
     case EventType.APP_STARTED: return `Lagring vedvarende: ${d.persisted ? 'ja' : 'nei'}`;
     default: return '';
   }
+}
+
+// «helt lik nr 3» / «samme telefon som nr 1, 4»
+export function overrideText(o) {
+  const nrs = (o?.matchNrs ?? []).join(', ');
+  const what = { identical: 'helt lik', email: 'samme e-post som', phone: 'samme telefon som', both: 'samme e-post og telefon som' }[o?.kind] ?? 'lik';
+  return `${what} nr ${nrs}`;
+}
+
+// Hva er likt mellom en ny registrering og en eksisterende deltaker? 'both' | 'email' | 'phone' | null
+export function contactMatch(contact, p) {
+  const e = !!normEmail(contact.email) && normEmail(contact.email) === normEmail(p.email);
+  const ph = !!normPhone(contact.phone) && normPhone(contact.phone) === normPhone(p.phone);
+  return e && ph ? 'both' : e ? 'email' : ph ? 'phone' : null;
 }
 
 function short(id) {

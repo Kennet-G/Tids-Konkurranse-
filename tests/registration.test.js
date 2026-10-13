@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildState, applyEvent, createState, findEmailDuplicates, findExistingParticipant, sharedContacts, hasHadAttempt, activeAttempts, attemptsFor, makeEvent, normPhone } from '../app/core/events.js';
+import { buildState, applyEvent, createState, findEmailDuplicates, findExistingParticipant, sharedContacts, contactMatch, overrideText, describeEvent, hasHadAttempt, activeAttempts, attemptsFor, makeEvent, normPhone } from '../app/core/events.js';
 import { eventLog } from './helpers.js';
 
 test('konkurranse opprettes med navn og innstillinger', () => {
@@ -153,4 +153,31 @@ test('inkrementell oppdatering gir samme tilstand som full avspilling', () => {
 
 test('ukjent hendelsestype avvises', () => {
   assert.throws(() => makeEvent('SLETT_ALT', {}));
+});
+
+test('lik e-post eller telefon oppdages (grunnlag for varsel og admin-overstyring)', () => {
+  const log = eventLog();
+  log.register('p1', 'Kennet', 'Gislefoss', { company: 'hgfds', email: 'b@g.no', phone: '97645806' });
+  const s = buildState(log.events);
+  const p1 = s.participants.get('p1');
+  const ny = { firstName: 'Kennet', lastName: 'Gislefoss', company: 'sdfg', email: 'y.g@y.no', phone: '+47 976 45 806' };
+  assert.equal(findExistingParticipant(s, ny), null, 'ikke helt lik person');
+  assert.deepEqual(sharedContacts(s, ny).map((p) => p.id), ['p1'], 'men samme telefon → varsel');
+  assert.equal(contactMatch(ny, p1), 'phone');
+  assert.equal(contactMatch({ ...ny, email: 'B@G.no' }, p1), 'both');
+  assert.equal(contactMatch({ ...ny, phone: '' }, p1), null);
+  assert.equal(contactMatch({ email: 'b@g.no', phone: '' }, p1), 'email');
+});
+
+test('overstyring med admin-PIN lagres på deltakeren og vises i loggen', () => {
+  const log = eventLog();
+  log.register('p1', 'Kennet', 'Gislefoss', { email: 'b@g.no', phone: '97645806' });
+  const ev = log.register('p2', 'Kennet', 'Gislefoss', { email: 'y.g@y.no', phone: '97645806', override: { kind: 'phone', matches: ['p1'], matchNrs: [1] } });
+  const s = buildState(log.events);
+  assert.deepEqual(s.participants.get('p2').override, { kind: 'phone', matches: ['p1'], matchNrs: [1] });
+  assert.equal(s.participants.get('p1').override, null);
+  assert.equal(overrideText(s.participants.get('p2').override), 'samme telefon som nr 1');
+  assert.match(describeEvent(ev), /OVERSTYRT av admin: samme telefon som nr 1/);
+  log.add('REREGISTRATION_BLOCKED', { participantId: 'p1', matchedOn: 'email', attempted: 'X Y, b@g.no' });
+  assert.equal(buildState(log.events).participants.get('p1').blockedAttempts, 1);
 });

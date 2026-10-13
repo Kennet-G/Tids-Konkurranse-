@@ -64,20 +64,28 @@ Registrering skjer manuelt. Appen bruker ikke QR-skanning.
    Ved feil vises en rød skjerm med «Prøv å lagre igjen».
    Etter 20 sekunder går skjermen automatisk tilbake til start.
 
-### Ett forsøk per deltaker
+### Ett forsøk per deltaker – varsel og admin-overstyring
 
-En ny registrering regnes som **samme person** bare når **navn, firma, e-post og telefon** alle er like.
-Store og små bokstaver, ekstra mellomrom og telefonformat spiller ingen rolle, så `+47 912 34 567` og `91234567`
-regnes som samme nummer.
+Når noen trykker «Lagre», sjekker appen mot deltakerne som allerede er registrert. Store og små bokstaver, ekstra
+mellomrom og telefonformat spiller ingen rolle, så `+47 976 45 806` og `97645806` regnes som samme nummer.
 
-Flere personer kan altså ha samme navn, eller dele e-post eller telefon, for eksempel `post@firma.no`. Slike
-deltakere merkes med «Delt kontakt» i adminpanelet, som informasjon.
+| Situasjon | Hva skjer |
+|---|---|
+| **Helt lik person** (navn, firma, e-post og telefon), som **har hatt** forsøket | Appen viser *«Du har allerede hatt forsøket ditt»*. Knappen *Overstyr (admin-PIN)* kan gi et nytt forsøk. |
+| **Helt lik person** som **ikke har fått tid** ennå | Deltakeren sendes rett videre til forsøket. Det opprettes ingen ny registrering. |
+| **Samme e-post eller samme telefon** som en annen deltaker | Appen stopper og viser et varsel med hvem som har samme e-post eller telefon. Velg *Tilbake og rett* eller *Overstyr med admin-PIN*. |
+| Bare samme navn | Registreres som ny deltaker, fordi flere kan hete det samme. |
 
-- **Har deltakeren allerede fått en tid**, vises *«Du har allerede hatt forsøket ditt, [fornavn]!»*.
-  Forsøket på ny registrering logges, og deltakeren merkes med «Prøvde igjen» i adminpanelet.
-- **Er deltakeren registrert, men har ikke fått tid** (for eksempel hvis operatøren trykket «Avbryt – tiden legges
-  inn senere»), sendes deltakeren rett videre til forsøket. Det opprettes ingen dobbel registrering.
-- **Slettes deltakerens tid i adminpanelet**, kan deltakeren få et nytt forsøk.
+**Overstyring** krever PIN-koden til konkurransen. Alt som skjer, logges:
+
+- Godkjente overstyringer merkes **«Godkjent av admin»** i deltakerlisten og som *«Overstyrt av admin»* i Excel,
+  med hvilken deltaker det gjaldt.
+- Stoppede registreringer telles som **«Stoppet ×n»** på deltakeren som allerede var registrert.
+- Feil PIN logges.
+
+Deltakere som deler e-post eller telefon, merkes også med «Delt kontakt: nr X».
+
+**Får en deltaker tiden sin slettet i admin**, kan deltakeren registrere seg og få et nytt forsøk.
 
 ### Publikumsskjermen
 
@@ -357,7 +365,8 @@ tests/           Automatiske tester + lokal server
 - [ ] «Lagre» er grå til alle påkrevde felt er gyldige og samtykke er krysset av.
 - [ ] Ekstern stoppeklokke: Registrer → tast tid → grønn skjerm. Ingen tid vises etter lagring.
 - [ ] Registrer nøyaktig samme navn, firma, e-post og telefon på nytt → «Du har allerede hatt forsøket ditt».
-- [ ] Registrer samme navn med annen e-post → godtas som ny deltaker.
+- [ ] Registrer samme telefon (eller e-post) med andre opplysninger → varsel. *Overstyr med admin-PIN* godtar registreringen, og den merkes «Godkjent av admin».
+- [ ] Registrer bare samme navn → godtas som ny deltaker.
 - [ ] Slå på **stoppeklokke i appen** i admin → START/STOPP vises for neste deltaker.
 - [ ] Trykk START → lukk appen → åpne igjen → forsøket er gjenopprettet, og STOPP virker.
 - [ ] Fyll ut halve skjemaet → last siden på nytt → skjemaet er der fortsatt.

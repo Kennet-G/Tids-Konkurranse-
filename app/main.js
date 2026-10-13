@@ -98,7 +98,9 @@ async function openCompetition(id) {
     if (err) toast(`Backup feilet: ${err.message ?? err}`, 'err', 8000);
   });
   await backup.init();
-  const pub = new PublicUI(store, host);
+  const pub = new PublicUI(store, host, {
+    requirePin: (title) => requirePin(registry, id, title, { onFail: () => store.record(EventType.ADMIN_LOGIN_FAILED, { context: 'overstyring' }).catch(() => {}) }),
+  });
   const admin = new AdminUI({
     store, backup, registry, competitionId: id,
     onClose: () => {},
