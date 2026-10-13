@@ -1,0 +1,22 @@
+/* TROX-profil – ALLE fargekoder er samlet her. Juster mot TROX sin profilmanual ved behov. */
+:root {
+  --trox-red: #e3000f;          /* TROX-rød aksent */
+  --trox-red-dark: #b0000c;     /* trykket/hover */
+  --trox-red-tint: #fde8ea;     /* lys rød bakgrunn */
+  --text: #3c3c3b;              /* mørk grå tekst */
+  --text-muted: #6f6f6e;
+  --bg: #ffffff;                /* hvit bakgrunn */
+  --surface: #f4f4f4;           /* lys grå flate */
+  --border: #d6d6d6;
+  --ok: #1e8e3e;                /* grønn bekreftelse */
+  --ok-tint: #e6f4ea;
+  --error: #c5221f;             /* rød feil */
+  --error-tint: #fce8e6;
+  --warn: #b26a00;
+  --warn-tint: #fff4e0;
+  --start: #1e8e3e;             /* START-knapp */
+  --stop: #e3000f;              /* STOPP-knapp (TROX-rød) */
+  --white: #ffffff;
+  --overlay: rgba(40, 40, 40, 0.55);
+  --font: "Helvetica Neue", Helvetica, Arial, "Roboto", "Segoe UI", sans-serif;
+}

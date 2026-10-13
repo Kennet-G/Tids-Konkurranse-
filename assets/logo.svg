@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" role="img" aria-label="TROX">
+  <!-- PLASSHOLDER: erstatt denne filen med offisiell TROX-logo (samme filnavn: assets/logo.svg). -->
+  <rect x="0" y="0" width="240" height="80" rx="6" fill="#e3000f"/>
+  <text x="120" y="56" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="46" font-weight="700" letter-spacing="6" fill="#ffffff">TROX</text>
+</svg>
